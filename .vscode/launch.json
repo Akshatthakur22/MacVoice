@@ -19,6 +19,66 @@
             "target": "TypingCoreDemo",
             "configuration": "release",
             "preLaunchTask": "swift: Build Release TypingCoreDemo"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Typer}",
+            "name": "Debug VoiceTypingApp",
+            "target": "VoiceTypingApp",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug VoiceTypingApp"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Typer}",
+            "name": "Release VoiceTypingApp",
+            "target": "VoiceTypingApp",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release VoiceTypingApp"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Typer}",
+            "name": "Debug VoiceTypingCoreChecks",
+            "target": "VoiceTypingCoreChecks",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug VoiceTypingCoreChecks"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Typer}",
+            "name": "Release VoiceTypingCoreChecks",
+            "target": "VoiceTypingCoreChecks",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release VoiceTypingCoreChecks"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Typer}",
+            "name": "Debug VoiceTypingBenchmark",
+            "target": "VoiceTypingBenchmark",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug VoiceTypingBenchmark"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Typer}",
+            "name": "Release VoiceTypingBenchmark",
+            "target": "VoiceTypingBenchmark",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release VoiceTypingBenchmark"
         }
     ]
 }

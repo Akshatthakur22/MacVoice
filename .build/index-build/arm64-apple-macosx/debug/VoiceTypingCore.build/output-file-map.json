@@ -1,0 +1,47 @@
+{
+  "": {
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/primary.swiftdeps"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Audio/AudioCapture.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.dia"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.dia"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.dia"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/AppleSpeechAnalyzerRecognizer.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.dia"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/SpeechRecognizer.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.dia"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Transcript/TranscriptReconciler.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.dia"
+  }
+}

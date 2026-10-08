@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingApp.build/primary.swiftdeps"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingApp/main.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingApp.build/main.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingApp.build/main.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingApp.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingApp.build/main.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingApp.build/main.dia"
+  }
+}
