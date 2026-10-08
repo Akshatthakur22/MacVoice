@@ -6,11 +6,21 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "TypingCore", targets: ["TypingCore"]),
-        .executable(name: "TypingCoreDemo", targets: ["TypingCoreDemo"])
+        .library(name: "VoiceTypingCore", targets: ["VoiceTypingCore"]),
+        .executable(name: "TypingCoreDemo", targets: ["TypingCoreDemo"]),
+        .executable(name: "VoiceTypingApp", targets: ["VoiceTypingApp"])
     ],
     targets: [
         .target(name: "TypingCore"),
+        .target(name: "VoiceTypingCore", dependencies: ["TypingCore"]),
         .executableTarget(name: "TypingCoreDemo", dependencies: ["TypingCore"]),
-        .testTarget(name: "TypingCoreTests", dependencies: ["TypingCore"])
+        .executableTarget(name: "VoiceTypingApp", dependencies: ["TypingCore", "VoiceTypingCore"]),
+        .executableTarget(name: "VoiceTypingCoreChecks", dependencies: ["VoiceTypingCore"]),
+        .executableTarget(name: "VoiceTypingBenchmark", dependencies: ["VoiceTypingCore"]),
+        .testTarget(
+            name: "TypingCoreTests",
+            dependencies: ["TypingCore", "VoiceTypingCore"],
+            path: "Tests/TypingCoreTests"
+        )
     ]
 )

@@ -98,6 +98,41 @@ partial count where relevant. This is not a text-insertion acknowledgement. A lo
 as indistinguishable from a physical keyboard; this module's goal is progressive
 keyboard-event delivery rather than hardware authenticity.
 
-Pure text-to-action checks live under `Tests/TypingCoreTests`. They verify scalar
-preservation for the written vectors and control-policy mapping, not target app
-behavior. See [COMPATIBILITY.md](COMPATIBILITY.md) for observed app test status.
+`Tests/TypingCoreTests` contains transcript reconciliation and PCM value tests,
+plus a deterministic fake recognizer. These tests do not exercise microphone or
+destination-app behavior. See [COMPATIBILITY.md](COMPATIBILITY.md) for observed
+app test status.
+
+## Voice typing prototype
+
+The package also includes a separate `VoiceTypingCore` library and a small
+macOS app with a control window and menu-bar status item. The host requires
+macOS 26 or later and uses Apple's on-device `SpeechAnalyzer` for the current
+system locale. Press **Control+Option+Space** to toggle listening. Choose
+**Install Speech Model** while online before using the app offline; starting a
+session does not download speech assets.
+
+Build a local app bundle with:
+
+```sh
+./scripts/build_voice_typing_app.sh
+open dist/VoiceTyping.app
+```
+
+Run the deterministic transcript safety checks without a test framework:
+
+```sh
+swift run VoiceTypingCoreChecks
+```
+
+The host requests microphone access on the first explicit start. The app bundle
+declares the microphone usage description. Use **Allow Keyboard Typing Access**
+to request macOS Accessibility permission for event posting. Audio buffers stay
+in memory; provisional hypotheses are not typed, and only confirmed text reaches
+`TypingCore.append`. Speech assets are installed and managed by macOS rather than
+stored inside the app bundle. The user has confirmed one English dictation into
+TextEdit; other apps and languages still need testing.
+
+This is an early prototype. Apple's model locale support is checked at runtime;
+Hindi and Hinglish support are not claimed until verified. See [ARCHITECTURE.md](ARCHITECTURE.md),
+[MODEL.md](MODEL.md), and [PERFORMANCE.md](PERFORMANCE.md).

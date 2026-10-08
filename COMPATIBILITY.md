@@ -22,6 +22,16 @@ inconclusive and is not a passing result. No other destination was tested.
 | LF / CR / CRLF | Inconclusive | Not tested | Not tested | Not tested | Not tested | Not tested | Not tested |
 | Long text | Not tested | Not tested | Not tested | Not tested | Not tested | Not tested | Not tested |
 
+## VoiceTyping status
+
+VoiceTyping has passed one user-reported English dictation smoke test in
+TextEdit on macOS 26.6.2 / Apple Silicon. The user installed the system speech
+assets, granted microphone access, started/stopped with Control+Option+Space,
+and confirmed text was typed. This confirms one end-to-end path; other apps,
+languages, punctuation, long sessions, and accuracy are not validated. The host
+uses the current system locale and checks support at runtime; Hindi/Hinglish are
+not marked verified.
+
 ## Reproducible manual harness
 
 Focus the target field, choose a sample and newline policy, then run:
