@@ -1,6 +1,10 @@
 {
   "builtTestProducts" : [
-
+    {
+      "binaryPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.xctest/Contents/MacOS/TypingCorePackageTests",
+      "packagePath" : "/Users/akshatthakur22/Desktop/open source/Typer",
+      "productName" : "TypingCorePackageTests"
+    }
   ],
   "copyCommands" : {
 
@@ -28,6 +32,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TextEncoder.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingEngine.swift"
         },
         {
@@ -48,6 +56,7 @@
       "moduleOutputPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCore.swiftmodule",
       "objects" : [
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/KeyboardEmitter.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swift.o",
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.swift.o",
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingError.swift.o"
       ],
@@ -103,6 +112,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.swift.o"
         },
         {
@@ -117,6 +130,7 @@
       "prepareForIndexing" : false,
       "sources" : [
         "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/KeyboardEmitter.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TextEncoder.swift",
         "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingEngine.swift",
         "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingError.swift"
       ],
@@ -212,6 +226,185 @@
       ],
       "tempsPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreDemo.build",
       "wholeModuleOptimization" : false
+    },
+    "C.TypingCorePackageTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources",
+      "importPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCoreTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "TypingCorePackageTests",
+      "moduleOutputPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCorePackageTests.swiftmodule",
+      "objects" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/include/TypingCorePackageTests-Swift.h",
+        "-color-diagnostics",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "typer"
+      ],
+      "outputFileMapPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCorePackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.TypingCoreTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/sources",
+      "importPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "TypingCoreTests",
+      "moduleOutputPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCoreTests.swiftmodule",
+      "objects" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-color-diagnostics",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "typer"
+      ],
+      "outputFileMapPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCoreTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift"
+      ],
+      "tempsPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build",
+      "wholeModuleOptimization" : false
     }
   },
   "swiftFrontendCommands" : {
@@ -226,6 +419,7 @@
       "typer",
       "-c",
       "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/KeyboardEmitter.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TextEncoder.swift",
       "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingEngine.swift",
       "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingError.swift",
       "-I",
@@ -329,6 +523,115 @@
       "typer",
       "-driver-use-frontend-path",
       "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "TypingCorePackageTests" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "TypingCorePackageTests",
+      "-package-name",
+      "typer",
+      "-c",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift",
+      "-I",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/include/TypingCorePackageTests-Swift.h",
+      "-color-diagnostics",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "typer",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "TypingCoreTests" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "TypingCoreTests",
+      "-package-name",
+      "typer",
+      "-c",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift",
+      "-I",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-color-diagnostics",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "typer",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
     ]
   },
   "targetDependencyMap" : {
@@ -337,13 +640,30 @@
     ],
     "TypingCoreDemo" : [
       "TypingCore"
+    ],
+    "TypingCorePackageTests" : [
+      "TypingCoreTests",
+      "TypingCore"
+    ],
+    "TypingCoreTests" : [
+      "TypingCore"
     ]
   },
   "testDiscoveryCommands" : {
 
   },
   "testEntryPointCommands" : {
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift" : {
+      "inputs" : [
 
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift"
+        }
+      ]
+    }
   },
   "traitConfiguration" : {
     "default" : {
@@ -361,6 +681,10 @@
         {
           "kind" : "file",
           "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/KeyboardEmitter.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TextEncoder.swift"
         },
         {
           "kind" : "file",
@@ -414,6 +738,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.swift.o"
         },
         {
@@ -426,6 +754,68 @@
         }
       ],
       "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreDemo.product/Objects.LinkFileList"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/KeyboardEmitter.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingError.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/sources"
     },
     "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
       "alwaysOutOfDate" : true,

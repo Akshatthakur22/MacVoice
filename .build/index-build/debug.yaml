@@ -6,8 +6,10 @@ targets:
   "PackageStructure": ["<PackageStructure>"]
   "TypingCore-arm64-apple-macosx-debug.module": ["<TypingCore-arm64-apple-macosx-debug.module>"]
   "TypingCoreDemo-arm64-apple-macosx-debug.module": ["<TypingCoreDemo-arm64-apple-macosx-debug.module>"]
+  "TypingCorePackageTests-arm64-apple-macosx-debug.module": ["<TypingCorePackageTests-arm64-apple-macosx-debug.module>"]
+  "TypingCoreTests-arm64-apple-macosx-debug.module": ["<TypingCoreTests-arm64-apple-macosx-debug.module>"]
   "main": ["<TypingCore-arm64-apple-macosx-debug.module>","<TypingCoreDemo-arm64-apple-macosx-debug.module>"]
-  "test": ["<TypingCore-arm64-apple-macosx-debug.module>","<TypingCoreDemo-arm64-apple-macosx-debug.module>"]
+  "test": ["<TypingCore-arm64-apple-macosx-debug.module>","<TypingCoreDemo-arm64-apple-macosx-debug.module>","<TypingCoreTests-arm64-apple-macosx-debug.module>"]
 default: "main"
 nodes:
   "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/":
@@ -16,10 +18,13 @@ nodes:
   "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCoreDemo/":
     is-directory-structure: true
     content-exclusion-patterns: [".git",".build"]
+  "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
 commands:
   "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCore.build/sources":
     tool: write-auxiliary-file
-    inputs: ["<sources-file-list>","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/KeyboardEmitter.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingEngine.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingError.swift"]
+    inputs: ["<sources-file-list>","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/KeyboardEmitter.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TextEncoder.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingEngine.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingError.swift"]
     outputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCore.build/sources"]
     description: "Write auxiliary file /Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCore.build/sources"
 
@@ -28,6 +33,18 @@ commands:
     inputs: ["<sources-file-list>","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCoreDemo/main.swift"]
     outputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreDemo.build/sources"]
     description: "Write auxiliary file /Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreDemo.build/sources"
+
+  "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift"]
+    outputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources"]
+    description: "Write auxiliary file /Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources"
+
+  "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift"]
+    outputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/sources"]
+    description: "Write auxiliary file /Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/sources"
 
   "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt":
     tool: write-auxiliary-file
@@ -46,11 +63,21 @@ commands:
     inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCoreDemo.swiftmodule"]
     outputs: ["<TypingCoreDemo-arm64-apple-macosx-debug.module>"]
 
+  "<TypingCorePackageTests-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCorePackageTests.swiftmodule"]
+    outputs: ["<TypingCorePackageTests-arm64-apple-macosx-debug.module>"]
+
+  "<TypingCoreTests-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCoreTests.swiftmodule"]
+    outputs: ["<TypingCoreTests-arm64-apple-macosx-debug.module>"]
+
   "C.TypingCore-arm64-apple-macosx-debug.module":
     tool: shell
-    inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/KeyboardEmitter.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingEngine.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingError.swift","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCore.build/sources"]
+    inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/KeyboardEmitter.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TextEncoder.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingEngine.swift","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingError.swift","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCore.build/sources"]
     outputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCore.swiftmodule"]
-    description: "Compiling Swift Module 'TypingCore' (3 sources)"
+    description: "Compiling Swift Module 'TypingCore' (4 sources)"
     args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","TypingCore","-emit-dependencies","-emit-module","-emit-module-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCore.swiftmodule","-output-file-map","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCore.build/output-file-map.json","-parse-as-library","-incremental","@/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCore.build/sources","-I","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-Onone","-enable-testing","-j10","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCore.build/include/TypingCore-Swift.h","-swift-version","5","-Xfrontend","-experimental-lazy-typecheck","-Xfrontend","-experimental-skip-all-function-bodies","-Xfrontend","-experimental-allow-module-with-compiler-errors","-Xfrontend","-empty-abi-descriptor","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","typer"]
 
   "C.TypingCoreDemo-arm64-apple-macosx-debug.module":
@@ -60,9 +87,23 @@ commands:
     description: "Compiling Swift Module 'TypingCoreDemo' (1 sources)"
     args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","TypingCoreDemo","-emit-dependencies","-emit-module","-emit-module-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCoreDemo.swiftmodule","-output-file-map","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreDemo.build/output-file-map.json","-incremental","@/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreDemo.build/sources","-I","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-Onone","-enable-testing","-j10","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","TypingCoreDemo_main","-swift-version","5","-Xfrontend","-experimental-lazy-typecheck","-Xfrontend","-experimental-skip-all-function-bodies","-Xfrontend","-experimental-allow-module-with-compiler-errors","-Xfrontend","-empty-abi-descriptor","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","typer"]
 
+  "C.TypingCorePackageTests-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCoreTests.swiftmodule","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources"]
+    outputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCorePackageTests.swiftmodule"]
+    description: "Compiling Swift Module 'TypingCorePackageTests' (1 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","TypingCorePackageTests","-emit-dependencies","-emit-module","-emit-module-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCorePackageTests.swiftmodule","-output-file-map","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.build/output-file-map.json","-parse-as-library","-incremental","@/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.build/sources","-I","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j10","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCorePackageTests.build/include/TypingCorePackageTests-Swift.h","-Xfrontend","-experimental-lazy-typecheck","-Xfrontend","-experimental-skip-all-function-bodies","-Xfrontend","-experimental-allow-module-with-compiler-errors","-Xfrontend","-empty-abi-descriptor","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","typer"]
+
+  "C.TypingCoreTests-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCore.swiftmodule","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/sources"]
+    outputs: ["/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCoreTests.swiftmodule"]
+    description: "Compiling Swift Module 'TypingCoreTests' (1 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","TypingCoreTests","-emit-dependencies","-emit-module","-emit-module-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules/TypingCoreTests.swiftmodule","-output-file-map","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/output-file-map.json","-parse-as-library","-incremental","@/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/sources","-I","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j10","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","5","-Xfrontend","-experimental-lazy-typecheck","-Xfrontend","-experimental-skip-all-function-bodies","-Xfrontend","-experimental-allow-module-with-compiler-errors","-Xfrontend","-empty-abi-descriptor","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","typer"]
+
   "PackageStructure":
     tool: package-structure-tool
-    inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCoreDemo/","/Users/akshatthakur22/Desktop/open source/Typer/Package.swift","/Users/akshatthakur22/Desktop/open source/Typer/Package.resolved"]
+    inputs: ["/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/","/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCoreDemo/","/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/","/Users/akshatthakur22/Desktop/open source/Typer/Package.swift","/Users/akshatthakur22/Desktop/open source/Typer/Package.resolved"]
     outputs: ["<PackageStructure>"]
     description: "Planning build"
     allow-missing-inputs: true

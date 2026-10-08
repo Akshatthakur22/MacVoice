@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/primary.swiftdeps"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.dia"
+  }
+}

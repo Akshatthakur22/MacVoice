@@ -9,6 +9,13 @@
     "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/KeyboardEmitter.swiftdeps",
     "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/KeyboardEmitter.dia"
   },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TextEncoder.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.dia"
+  },
   "/Users/akshatthakur22/Desktop/open source/Typer/Sources/TypingCore/TypingEngine.swift": {
     "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.d",
     "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.swift.o",

@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/primary.swiftdeps"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.derived/runner.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/runner.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/runner.dia"
+  }
+}

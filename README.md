@@ -27,12 +27,26 @@ every target app or language input method.
 The sample corpus covers ordinary prose, punctuation, digits, ASCII symbols,
 accented Latin, Indian currency, typographic punctuation, emoji, Hindi, newline
 handling, and a repeated paragraph. Newline handling is configurable with
-`--newline=newline|enter|omit`; the demo defaults to `newline`. Library callers
+`--newline=newline|enter|shift-enter|omit`; the demo defaults to `newline`.
+`shift-enter` tries the common chat line-break shortcut. Library callers
 must select a `NewlineBehavior` when constructing the engine, so the behavior
 is never silently guessed. Compare the expected
 output in a plain text editor and record the macOS version, target app, and
 keyboard/input source. Secure Input fields are expected to reject or suppress
 injected events.
+
+Additional demo vectors: `punctuation`, `typography`, `whitespace`, `unicode`,
+`combining`, `emoji`, and `speech`. `--delay=0|1|5|10` selects inter-grapheme
+pacing in milliseconds. `stream` rapidly queues append chunks, including a
+split emoji sequence. `cancel` queues a long run and stops after 50 ms;
+`cancel-now` tests stop immediately after enqueue. These
+exercise the engine path but still require checking the resulting text in the
+target application.
+
+Shift+Return uses an internal 25 ms settling pause on both sides of the line
+break. This gives apps time to process adjacent text without slowing every
+ordinary character or requiring a per-app delay setting. It remains best-effort:
+target applications can still interpret keyboard events differently.
 
 ## API
 
@@ -62,12 +76,15 @@ decide whether to append, revise, or ignore them.
 event. Apple documents that application frameworks may ignore that Unicode
 payload and translate the virtual keycode/event state themselves. Therefore this
 is layout-independent in the event payload, but it is not universal text
-insertion. The engine uses virtual keycode zero for printable graphemes and a
-Tab keycode for tabs. Newlines have three explicit modes: `.newline` attaches LF
-as Unicode data to a keycode-zero event, `.enter` posts Return, and `.omit`
-skips it. There is no CGEvent guarantee that `.newline` will become an inserted
-line break rather than an app command; a chat field may still treat it as Send.
-Tab may move focus. IMEs, secure fields, games, remote desktops, and apps with
+insertion. The engine uses virtual keycode zero for printable graphemes. Tab is
+sent as a Unicode control payload instead of a Tab keycode to avoid
+intentionally moving focus. Newlines have four explicit modes: `.newline`
+preserves CR and LF scalar payloads, `.enter` maps each CR/LF scalar to Return,
+`.shiftEnter` maps each to Shift+Return, and `.omit` skips line breaks. For
+`.newline`, a CRLF pair is sent as CR then LF,
+even when split across append calls. There is no CGEvent guarantee that Unicode control payloads become text
+instead of app commands; a chat field may still treat LF as Send. Tab insertion
+also remains app-dependent. IMEs, secure fields, games, remote desktops, and apps with
 custom text handling may ignore or transform events. Emoji and scripts such as Hindi
 are passed as one Swift grapheme's UTF-16 sequence, but target-app support must be
 measured; CGEvent does not perform normal keyboard-layout or IME composition.
@@ -75,6 +92,12 @@ measured; CGEvent does not perform normal keyboard-layout or IME composition.
 The only permission check included is `CGPreflightPostEventAccess()`. The host
 application owns any permission request and user-facing explanation. Event posts
 are asynchronous from the engine's perspective: Core Graphics offers no receipt
-that the target inserted a character. A low-level event should not be described
+that the target inserted a character. Completion returns a `TypingReport` with
+the number of event pairs submitted and time-to-first-post, or an error with the
+partial count where relevant. This is not a text-insertion acknowledgement. A low-level event should not be described
 as indistinguishable from a physical keyboard; this module's goal is progressive
 keyboard-event delivery rather than hardware authenticity.
+
+Pure text-to-action checks live under `Tests/TypingCoreTests`. They verify scalar
+preservation for the written vectors and control-policy mapping, not target app
+behavior. See [COMPATIBILITY.md](COMPATIBILITY.md) for observed app test status.
