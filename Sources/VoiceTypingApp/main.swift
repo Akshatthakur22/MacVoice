@@ -34,13 +34,13 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var modeExplanation: NSTextField!
     private var startButton: NSButton!
     private var modePicker: NSPopUpButton!
-    private var modelPicker: NSPopUpButton!
     private var installPolisherButton: NSButton!
     private var polisherStatus: NSTextField!
     private var polisherSection: NSStackView!
     private var statusSymbol: NSImageView!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        removeRetiredPolishingModel()
         buildMenu()
         buildControlWindow()
         let locale = Locale.current
@@ -58,6 +58,17 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             setStatus("Idle · \(locale.identifier) · shortcut ready")
         } catch {
             setStatus("Shortcut unavailable: \(error.localizedDescription)")
+        }
+    }
+
+    private func removeRetiredPolishingModel() {
+        let legacyModel = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Typer/MLX/models/smollm2", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: legacyModel.path) else { return }
+        do {
+            try FileManager.default.removeItem(at: legacyModel)
+        } catch {
+            NSLog("MacVoice could not remove its retired SmolLM2 model: %@", error.localizedDescription)
         }
     }
 
@@ -157,20 +168,12 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         modeExplanation.textColor = .secondaryLabelColor
         modeExplanation.maximumNumberOfLines = 2
 
-        let modelLabel = NSTextField(labelWithString: "Cleanup model")
-        modelLabel.font = .systemFont(ofSize: 12, weight: .medium)
-        modelPicker = NSPopUpButton()
-        modelPicker.addItems(withTitles: PolishingModel.allCases.map { $0 == .qwen025 ? "Recommended · Qwen 0.5B" : $0.title })
-        let savedModel = UserDefaults.standard.string(forKey: "polishingModel") ?? PolishingModel.qwen025.rawValue
-        modelPicker.selectItem(at: PolishingModel.allCases.firstIndex(where: { $0.rawValue == savedModel }) ?? 0)
-        modelPicker.target = self
-        modelPicker.action = #selector(modelChanged)
-        polisherStatus = NSTextField(wrappingLabelWithString: "Cleanup model is not installed.")
+        polisherStatus = NSTextField(wrappingLabelWithString: "One-time setup downloads the local cleanup model. It runs on this Mac.")
         polisherStatus.font = .systemFont(ofSize: 12)
         polisherStatus.textColor = .secondaryLabelColor
         polisherStatus.maximumNumberOfLines = 2
-        installPolisherButton = NSButton(title: "Download Cleanup Model…", target: self, action: #selector(installPolisher))
-        polisherSection = NSStackView(views: [modelLabel, modelPicker, polisherStatus, installPolisherButton])
+        installPolisherButton = NSButton(title: "Set Up Polished Mode…", target: self, action: #selector(installPolisher))
+        polisherSection = NSStackView(views: [polisherStatus, installPolisherButton])
         polisherSection.orientation = .vertical
         polisherSection.alignment = .leading
         polisherSection.spacing = 7
@@ -317,16 +320,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         setStatus(mode == .polished ? "Polished mode selected" : "Verbatim mode selected")
     }
 
-    @objc private func modelChanged() {
-        let model = PolishingModel.allCases[modelPicker.indexOfSelectedItem]
-        UserDefaults.standard.set(model.rawValue, forKey: "polishingModel")
-        updatePolisherStatus()
-        setStatus("Cleanup model changed")
-        configureSession()
-    }
-
     @objc private func installPolisher() {
-        let model = PolishingModel.allCases[modelPicker.indexOfSelectedItem]
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
         let bundledResources = Bundle.main.resourceURL
@@ -337,12 +331,12 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let worker = bundledWorker.flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
             ?? root.appendingPathComponent("Resources/mlx_worker.py")
         guard let python = suitablePython() else {
-            setStatus("Install Python 3.10+ first, then use Install Local Polishing Model again.")
+            setStatus("Install Python 3.10+ first, then set up Polished mode again.")
             return
         }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = [script.path, model.rawValue, worker.path]
+        process.arguments = [script.path, worker.path]
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHON"] = python.path
         process.environment = environment
@@ -352,8 +346,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         process.standardOutput = logHandle
         process.standardError = logHandle
         installPolisherButton.isEnabled = false
-        installPolisherButton.title = "Downloading…"
-        setStatus("Downloading the cleanup model. This may take a few minutes.")
+        installPolisherButton.title = "Setting Up…"
+        setStatus("Setting up Polished mode on this Mac. This may take a few minutes.")
         process.terminationHandler = { [weak self] process in
             try? logHandle?.synchronize()
             try? logHandle?.close()
@@ -362,8 +356,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.installPolisherButton.isEnabled = true
-                self.installPolisherButton.title = "Download Cleanup Model…"
-                self.setStatus(process.terminationStatus == 0 ? "Cleanup model installed · processing stays on this Mac" : "Model setup failed: \(detail.suffix(220))")
+                self.installPolisherButton.title = "Set Up Polished Mode…"
+                self.setStatus(process.terminationStatus == 0 ? "Polished mode is ready · cleanup runs on this Mac" : "Model setup failed: \(detail.suffix(220))")
                 self.updatePolisherStatus()
             }
         }
@@ -405,10 +399,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let recognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
         let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .newline)
         let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? "verbatim") ?? .verbatim
-        let modelKey = UserDefaults.standard.string(forKey: "polishingModel") ?? PolishingModel.qwen025.rawValue
-        let model = PolishingModel(rawValue: modelKey) ?? .qwen025
         if let oldPolisher = polisher { Task { await oldPolisher.stop() } }
-        let polisher = LocalMLXTranscriptPolisher(model: model)
+        let polisher = LocalMLXTranscriptPolisher()
         self.polisher = polisher
         let session = VoiceTypingSession(
             audioCapture: AudioCapture(), recognizer: recognizer, typingEngine: engine,
@@ -428,15 +420,14 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updatePolisherStatus() {
-        guard polisherStatus != nil, modelPicker != nil else { return }
-        let model = PolishingModel.allCases[modelPicker.indexOfSelectedItem]
+        guard polisherStatus != nil else { return }
         let root = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Typer/MLX")
         let installed = FileManager.default.isExecutableFile(atPath: root.appendingPathComponent("venv/bin/python3").path)
-            && FileManager.default.fileExists(atPath: root.appendingPathComponent("models/\(model.rawValue)/config.json").path)
+            && FileManager.default.fileExists(atPath: root.appendingPathComponent("models/qwen025/config.json").path)
         polisherStatus.stringValue = installed
-            ? "Cleanup model is installed and runs on this Mac."
-            : "Cleanup model is not installed. Polished mode will use Verbatim until setup is complete."
+            ? "Polished mode is ready. The local cleanup model runs on this Mac."
+            : "Polished mode needs a one-time model setup. Until then, dictation uses Verbatim."
     }
 
     private func updateModeUI() {
@@ -464,7 +455,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             startButton?.isEnabled = true
             toggleMenuItem?.title = "Start Dictation"
             modePicker?.isEnabled = true
-            modelPicker?.isEnabled = true
         case .starting:
             setStatus("Starting dictation…")
             statusSymbol.contentTintColor = .controlAccentColor
@@ -472,7 +462,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             startButton?.isEnabled = false
             toggleMenuItem?.title = "Starting…"
             modePicker?.isEnabled = false
-            modelPicker?.isEnabled = false
         case .listening:
             setStatus("Listening · Control+Option+Space to stop")
             statusSymbol.contentTintColor = .systemRed
@@ -480,7 +469,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             startButton?.isEnabled = true
             toggleMenuItem?.title = "Stop Dictation"
             modePicker?.isEnabled = false
-            modelPicker?.isEnabled = false
         case .stopping:
             setStatus("Finishing dictation…")
             statusSymbol.contentTintColor = .controlAccentColor
@@ -488,7 +476,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             startButton?.isEnabled = false
             toggleMenuItem?.title = "Finishing…"
             modePicker?.isEnabled = false
-            modelPicker?.isEnabled = false
         case .failed(let message):
             setStatus("Dictation failed: \(message)")
             statusSymbol.contentTintColor = .systemOrange
@@ -496,7 +483,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             startButton?.isEnabled = true
             toggleMenuItem?.title = "Try Dictation Again"
             modePicker?.isEnabled = true
-            modelPicker?.isEnabled = true
         }
     }
 

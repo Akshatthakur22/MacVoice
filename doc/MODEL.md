@@ -49,22 +49,20 @@ also measure TypingCore event submission independently from target insertion.
 
 ## Optional transcript polisher implementation
 
-The voice app also has an opt-in text cleanup model, separate from speech recognition.
-It uses `mlx-community/Qwen2.5-0.5B-Instruct-4bit` (revision
-`a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3`) through MLX-LM. The comparison model
-is `mlx-community/SmolLM2-360M-Instruct-6bit` (revision
-`642affd1f9e387d1b56c745894afc83795aebe1d`); repository inspection did not establish
-a compatible 4-bit SmolLM2 artifact, so this comparison uses its published 6-bit MLX
-checkpoint. Both are MLX-format checkpoints rather than upstream Transformers-only IDs.
-Both checkpoint pages publish Apache-2.0 licenses: [Qwen MLX artifact](https://huggingface.co/mlx-community/Qwen2.5-0.5B-Instruct-4bit), [SmolLM2 MLX artifact](https://huggingface.co/mlx-community/SmolLM2-360M-Instruct-6bit).
+The voice app has one optional text cleanup model, separate from speech recognition.
+When the user selects Polished mode and chooses its setup action, MacVoice installs
+`mlx-community/Qwen2.5-0.5B-Instruct-4bit` (revision
+`a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3`) through MLX-LM. Verbatim mode does not
+start the model worker. The [Qwen MLX artifact](https://huggingface.co/mlx-community/Qwen2.5-0.5B-Instruct-4bit)
+publishes an Apache-2.0 license.
 An explicit setup action installs pinned `mlx-lm==0.31.3`, `mlx==0.32.3`,
 `transformers==5.17.0`, and `huggingface_hub==1.5.0` into a Python 3.10–3.13
-virtual environment, then downloads the selected checkpoint to the user's Application
-Support directory. In this environment the model folders occupied about 283 MiB (Qwen)
-and 285 MiB (SmolLM2); the Python environment occupied 408 MiB. A persistent local Python process
+virtual environment, then downloads the Qwen checkpoint to the user's Application
+Support directory. In this environment the Qwen model occupied about 276 MiB and the
+Python environment occupied 408 MiB. A persistent local Python process
 loads the model once and accepts newline-delimited JSON requests from Swift over stdin/stdout.
-No HTTP server or cloud inference service is used. The comparative local results and
-their limits are recorded in `PERFORMANCE.md`.
+No HTTP server or cloud inference service is used. Local results and their limits
+are recorded in `PERFORMANCE.md`.
 
 ## Primary references
 

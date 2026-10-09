@@ -21,7 +21,7 @@ enum VoiceTypingCoreChecks {
         } catch TranscriptReconciliationError.confirmedTextWasRevised {
             try checkPhraseBuffer()
             if CommandLine.arguments.contains("--mlx") {
-                let polisher = LocalMLXTranscriptPolisher(model: .qwen025)
+                let polisher = LocalMLXTranscriptPolisher()
                 let start = ContinuousClock.now
                 let result = try await polisher.polish("i think we should ship it next week")
                 print("Local MLX result: \(result)")

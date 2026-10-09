@@ -1,18 +1,9 @@
 #!/bin/sh
 set -eu
 
-MODEL_KEY=${1:-qwen025}
-case "$MODEL_KEY" in
-  qwen025)
-    REPO="mlx-community/Qwen2.5-0.5B-Instruct-4bit"
-    REVISION="a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
-    ;;
-  smollm2)
-    REPO="mlx-community/SmolLM2-360M-Instruct-6bit"
-    REVISION="642affd1f9e387d1b56c745894afc83795aebe1d"
-    ;;
-  *) echo "Unknown model: $MODEL_KEY" >&2; exit 2 ;;
-esac
+MODEL_KEY=qwen025
+REPO="mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+REVISION="a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
 
 [ "$(uname -s)" = Darwin ] || { echo "Local MLX inference requires macOS." >&2; exit 1; }
 [ "$(uname -m)" = arm64 ] || { echo "MLX polishing requires Apple Silicon (arm64)." >&2; exit 1; }
@@ -20,7 +11,7 @@ esac
 ROOT="$HOME/Library/Application Support/Typer/MLX"
 MODEL_DIR="$ROOT/models/$MODEL_KEY"
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-WORKER_SOURCE=${2:-$SCRIPT_DIR/mlx_worker.py}
+WORKER_SOURCE=${1:-$SCRIPT_DIR/mlx_worker.py}
 PYTHON=${PYTHON:-python3}
 PY_MINOR=$($PYTHON -c 'import sys; print(sys.version_info.minor)')
 PY_MAJOR=$($PYTHON -c 'import sys; print(sys.version_info.major)')

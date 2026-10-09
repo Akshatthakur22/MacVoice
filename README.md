@@ -28,7 +28,7 @@ After launch, MacVoice stays in the background as a menu-bar utility. Its top-ri
 | Mode | What happens | Trade-off |
 | --- | --- | --- |
 | **Verbatim** | Confirmed speech text goes directly to the typing engine. | Lowest processing overhead; wording and punctuation depend on speech recognition. |
-| **Polished (local AI)** | Confirmed text is buffered by punctuation and stop, then sent to a local MLX-LM worker. | Adds phrase-level delay. Current validation allows punctuation/case changes and a few filler removals; it rejects broader word rewrites. |
+| **Polished (local AI)** | Confirmed text is buffered by punctuation and stop, then sent to the built-in Qwen cleanup model on this Mac. | Adds phrase-level delay. Current validation allows punctuation/case changes and a few filler removals; it rejects broader word rewrites. |
 
 Polishing is optional. If the model is unavailable or its output fails validation, the original recognized phrase is used where possible. Polished mode does not correct audio recognition itself.
 
@@ -45,7 +45,7 @@ Polishing is optional. If the model is unavailable or its output fails validatio
 
 - The current locally built `MacVoice.app` is approximately **1.2 MB**. Bundle size can vary with the compiler, architecture, and included assets.
 - Verbatim mode does not require a separate application-side model download. macOS manages the speech assets independently, and their size depends on the selected locale.
-- Polished mode currently needs approximately **680 MB** for the Python/MLX environment plus the Qwen2.5-0.5B-Instruct 4-bit model under `~/Library/Application Support/Typer/MLX/`. Installing both available models takes about **970 MB** on this development Mac. Package caches and future model revisions can change these figures.
+- Polished mode currently needs approximately **684 MB** for the Python/MLX environment plus the Qwen2.5-0.5B-Instruct 4-bit model under `~/Library/Application Support/Typer/MLX/`. The app offers this one model and downloads it only when the user sets up Polished mode. Package caches and future model revisions can change the figure.
 - Building from source can use additional temporary SwiftPM data. The current `.build/` directory is approximately **585 MB** and is not part of the installed app.
 
 Build and install the app in your user Applications folder:
@@ -61,9 +61,9 @@ Local builds use the stable `MacVoice Local Development` signing certificate in 
 
 ### Optional local polishing setup
 
-Polished mode requires Apple Silicon, Python 3.10–3.13, and an internet connection for the explicit one-time setup. Choose **Polished**, then **Download Cleanup Model** in the app to install MLX-LM and the selected model. The current primary choice is Qwen2.5-0.5B-Instruct 4-bit. Model and Python files are stored under `~/Library/Application Support/Typer/MLX/` to preserve existing installations.
+Polished mode requires Apple Silicon, Python 3.10–3.13, and an internet connection for the explicit one-time setup. Choose **Polished**, then **Set Up Polished Mode** in the app. MacVoice installs MLX-LM and its fixed Qwen2.5-0.5B-Instruct 4-bit cleanup model; there is no model picker. Model and Python files are stored under `~/Library/Application Support/Typer/MLX/` to preserve the installation between app updates.
 
-Normal local inference uses those files on the Mac; the app does not send the audio or transcript to a cloud inference service. Speech assets are installed and managed separately by macOS. See [the model guide](doc/MODEL.md) for model choices and [the performance guide](doc/PERFORMANCE.md) for benchmark results and limits.
+Normal local inference uses those files on the Mac; the app does not send the audio or transcript to a cloud inference service. Speech assets are installed and managed separately by macOS. See [the model guide](doc/MODEL.md) for model details and [the performance guide](doc/PERFORMANCE.md) for benchmark results and limits.
 
 ## Privacy and data handling
 

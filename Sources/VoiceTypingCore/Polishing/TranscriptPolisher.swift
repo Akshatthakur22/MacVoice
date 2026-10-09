@@ -15,56 +15,30 @@ public enum PolishingMode: String, CaseIterable, Sendable {
     case polished
 }
 
-public enum PolishingModel: String, CaseIterable, Sendable {
-    case qwen025 = "qwen025"
-    case smollm2 = "smollm2"
-
-    public var title: String {
-        switch self {
-        case .qwen025: "Qwen2.5 0.5B (4-bit)"
-        case .smollm2: "SmolLM2 360M (6-bit)"
-        }
-    }
-
-    public var repository: String {
-        switch self {
-        case .qwen025: "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
-        case .smollm2: "mlx-community/SmolLM2-360M-Instruct-6bit"
-        }
-    }
-
-    public var revision: String {
-        switch self {
-        case .qwen025: "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
-        // Resolved from the public model page during setup; overrideable to
-        // retain compatibility if Hugging Face rotates its default branch.
-        case .smollm2: "642affd1f9e387d1b56c745894afc83795aebe1d"
-        }
-    }
-}
-
 /// Local persistent MLX-LM worker. The worker loads a model once and exchanges
 /// one JSON request/response per line. It never contacts an inference service.
 public actor LocalMLXTranscriptPolisher: TranscriptPolisher {
-    private let model: PolishingModel
+    private static let modelKey = "qwen025"
+    private static let modelRepository = "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+    private static let modelRevision = "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
     private var process: Process?
     private var input: FileHandle?
     private var output: FileHandle?
     private var bufferedOutput = Data()
 
-    public init(model: PolishingModel = .qwen025) { self.model = model }
+    public init() {}
 
     public func isInstalled() -> Bool {
         let root = Self.installRoot
         return FileManager.default.isExecutableFile(atPath: root.appendingPathComponent("venv/bin/python3").path)
-            && FileManager.default.fileExists(atPath: root.appendingPathComponent("models/\(model.rawValue)/config.json").path)
+            && FileManager.default.fileExists(atPath: root.appendingPathComponent("models/\(Self.modelKey)/config.json").path)
     }
 
     public func polish(_ transcript: String) async throws -> String {
         guard !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return transcript }
         try startWorkerIfNeeded()
         guard let input, let output else { throw PolisherError.workerUnavailable }
-        let request: [String: String] = ["transcript": transcript, "model": model.repository]
+        let request: [String: String] = ["transcript": transcript, "model": Self.modelRepository]
         let data = try JSONSerialization.data(withJSONObject: request)
         try input.write(contentsOf: data + Data([0x0A]))
 
@@ -110,8 +84,8 @@ public actor LocalMLXTranscriptPolisher: TranscriptPolisher {
               FileManager.default.fileExists(atPath: scriptURL.path) else { throw PolisherError.notInstalled }
         let child = Process()
         child.executableURL = URL(fileURLWithPath: python)
-        child.arguments = [scriptURL.path, "--model", model.repository, "--revision", model.revision,
-                           "--model-dir", root.appendingPathComponent("models/\(model.rawValue)").path]
+        child.arguments = [scriptURL.path, "--model", Self.modelRepository, "--revision", Self.modelRevision,
+                           "--model-dir", root.appendingPathComponent("models/\(Self.modelKey)").path]
         let stdin = Pipe(), stdout = Pipe(), stderr = Pipe()
         child.standardInput = stdin
         child.standardOutput = stdout

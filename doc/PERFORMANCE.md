@@ -34,35 +34,29 @@ Tools installation does not include the XCTest module.
 ## Optional MLX transcript polisher
 
 `scripts/benchmark_local_polisher.py` replays `Resources/polisher_benchmark.json`
-against the installed primary and comparison model with the same prompt and
-generation settings. It reports model-load-to-ready time and warm median/p95
+against the installed Qwen model. It reports model-load-to-ready time and warm median/p95
 per-phrase latency, median time to first generated text, child process CPU time,
 peak RSS, mean whitespace-token WER, mean Unicode-character error rate, plus every
 output for human review against the reference.
-Example: `python3 scripts/benchmark_local_polisher.py --model qwen025 --repeats 3`.
-It does not measure actual destination typing latency. Run one model per invocation
-when comparing RSS, since macOS reports child-process high-water RSS cumulatively.
+Example: `python3 scripts/benchmark_local_polisher.py --repeats 3`.
+It does not measure actual destination typing latency.
 
 ### Local run, 2026-10-09
 
 Hardware: MacBook Air (Mac16,12), Apple M4, 16 GB unified memory, arm64; macOS
-version from `sw_vers` was 26.6.2. The pinned revisions listed in `MODEL.md` were
-installed locally. Each model ran the same 12 transcript examples, three times
-each, with greedy decoding and one persistent worker. Cold startup is process plus
+version from `sw_vers` was 26.6.2. The pinned Qwen revision listed in `MODEL.md` was
+installed locally and ran the same 12 transcript examples three times each, with
+greedy decoding and one persistent worker. Cold startup is process plus
 model loading; warm latency includes phrase prefill and all generated output.
 
 | Model | Cold worker startup | Warm phrase median / p95 | First generated text median | Worker CPU | Peak RSS | Mean WER / CER |
 |---|---:|---:|---:|---:|---:|---:|
 | Qwen2.5 0.5B 4-bit | 1.295 s | 0.159 / 0.201 s | 0.118 s | 4.311 s | 536.8 MiB | 14.8% / 8.1% |
-| SmolLM2 360M 6-bit | 0.838 s | 0.153 / 0.367 s | 0.089 s | 4.545 s | 453.0 MiB | 231.3% / 209.5% |
 
-SmolLM2 frequently answered the dictated content instead of editing it; its mean
-error rates exceed 100% because outputs were much longer than the references. The
-validator rejects token edits beyond known filler removals, so the app falls back
-to the original phrase for those responses and Qwen's broader rewrites. Qwen's
-latency was similar and it produced more conservative outputs on this small set.
 These 12 short examples are a smoke benchmark, not a broad accuracy evaluation;
-WER/CER do not detect every meaning change.
+WER/CER do not detect every meaning change. The app's conservative validator
+rejects word changes beyond known filler removals and falls back to the original
+phrase when output appears unsafe.
 
 `swift run VoiceTypingCoreChecks --mlx` also exercised the Swift JSON-lines bridge
 against Qwen on this Mac. It returned “I think we should ship it next week.” in

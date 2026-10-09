@@ -10,10 +10,9 @@ import subprocess
 import time
 
 ROOT = Path.home() / "Library/Application Support/Typer/MLX"
-MODELS = {
-    "qwen025": ("mlx-community/Qwen2.5-0.5B-Instruct-4bit", "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"),
-    "smollm2": ("mlx-community/SmolLM2-360M-Instruct-6bit", "642affd1f9e387d1b56c745894afc83795aebe1d"),
-}
+MODEL_KEY = "qwen025"
+MODEL_REPO = "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+MODEL_REVISION = "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
 
 
 def error_rate(reference, output):
@@ -30,16 +29,15 @@ def error_rate(reference, output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", choices=MODELS, action="append")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--dataset", default=str(Path(__file__).resolve().parents[1] / "Resources/polisher_benchmark.json"))
     args = parser.parse_args()
     dataset = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
     results = {"machine": subprocess.check_output(["/usr/bin/uname", "-m"], text=True).strip(),
                "models": {}}
-    for key in args.model or list(MODELS):
-        repo, revision = MODELS[key]
-        model_dir = ROOT / "models" / key
+    for key in [MODEL_KEY]:
+        repo, revision = MODEL_REPO, MODEL_REVISION
+        model_dir = ROOT / "models" / MODEL_KEY
         worker = ROOT / "mlx_worker.py"
         python = ROOT / "venv/bin/python3"
         if not (model_dir / "config.json").exists():
