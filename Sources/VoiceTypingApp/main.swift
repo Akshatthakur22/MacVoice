@@ -8,11 +8,11 @@ import VoiceTypingCore
 enum VoiceTypingAppMain {
     static func main() {
         guard #available(macOS 26.0, *) else {
-            fputs("VoiceTypingApp requires macOS 26 or later.\n", stderr)
+            fputs("MacVoice requires macOS 26 or later.\n", stderr)
             return
         }
         let application = NSApplication.shared
-        application.setActivationPolicy(.regular)
+        application.setActivationPolicy(.accessory)
         let delegate = VoiceTypingAppDelegate()
         application.delegate = delegate
         application.run()
@@ -28,12 +28,17 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var recognizer: AppleSpeechAnalyzerRecognizer?
     private var polisher: LocalMLXTranscriptPolisher?
     private var statusLine: NSMenuItem!
+    private var toggleMenuItem: NSMenuItem!
     private var controlWindow: NSWindow!
     private var windowStatus: NSTextField!
+    private var modeExplanation: NSTextField!
+    private var startButton: NSButton!
     private var modePicker: NSPopUpButton!
     private var modelPicker: NSPopUpButton!
     private var installPolisherButton: NSButton!
     private var polisherStatus: NSTextField!
+    private var polisherSection: NSStackView!
+    private var statusSymbol: NSImageView!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
@@ -54,7 +59,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             setStatus("Shortcut unavailable: \(error.localizedDescription)")
         }
-        showControlWindow()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
@@ -70,7 +74,13 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildMenu() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "Voice: Idle"
+        if let button = statusItem.button {
+            button.title = "MacVoice"
+            button.image = brandImage(named: "MacVoiceMenuBar") ?? NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "MacVoice status")
+            button.image?.isTemplate = true
+            button.imagePosition = .imageLeading
+            button.toolTip = "MacVoice voice typing status"
+        }
 
         let menu = NSMenu()
         statusLine = NSMenuItem(title: "Idle", action: nil, keyEquivalent: "")
@@ -78,12 +88,16 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(statusLine)
         menu.addItem(.separator())
 
-        let toggle = NSMenuItem(title: "Start / Stop Voice Typing", action: #selector(toggleFromMenu), keyEquivalent: " ")
-        toggle.keyEquivalentModifierMask = [.control, .option]
-        toggle.target = self
-        menu.addItem(toggle)
+        toggleMenuItem = NSMenuItem(title: "Start Dictation", action: #selector(toggleFromMenu), keyEquivalent: " ")
+        toggleMenuItem.keyEquivalentModifierMask = [.control, .option]
+        toggleMenuItem.target = self
+        menu.addItem(toggleMenuItem)
 
-        let permission = NSMenuItem(title: "Request Microphone Access", action: #selector(requestMicrophoneAccess), keyEquivalent: "")
+        let settings = NSMenuItem(title: "MacVoice Settings…", action: #selector(openSettings), keyEquivalent: "")
+        settings.target = self
+        menu.addItem(settings)
+
+        let permission = NSMenuItem(title: "Microphone Access…", action: #selector(requestMicrophoneAccess), keyEquivalent: "")
         permission.target = self
         menu.addItem(permission)
 
@@ -99,63 +113,119 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func buildControlWindow() {
-        let title = NSTextField(labelWithString: "Voice Typing")
+        let iconImage = brandImage(named: "MacVoiceAppIcon")
+            ?? NSImage(systemSymbolName: "mic.circle.fill", accessibilityDescription: "MacVoice")!
+        let icon = NSImageView(image: iconImage)
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        icon.setAccessibilityLabel("MacVoice app icon")
+        icon.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        let title = NSTextField(labelWithString: "MacVoice")
         title.font = .boldSystemFont(ofSize: 22)
+        let subtitle = NSTextField(labelWithString: "Speak naturally. Text appears in your active app.")
+        subtitle.font = .systemFont(ofSize: 13)
+        subtitle.textColor = .secondaryLabelColor
+        let heading = NSStackView(views: [icon, title])
+        heading.orientation = .horizontal
+        heading.alignment = .centerY
+        heading.spacing = 10
 
-        windowStatus = NSTextField(wrappingLabelWithString: "Idle")
-        windowStatus.font = .systemFont(ofSize: 13)
+        statusSymbol = NSImageView(image: NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Idle")!)
+        statusSymbol.symbolConfiguration = .init(pointSize: 9, weight: .bold)
+        statusSymbol.contentTintColor = .tertiaryLabelColor
+        windowStatus = NSTextField(wrappingLabelWithString: "Ready · Control+Option+Space to dictate")
+        windowStatus.font = .systemFont(ofSize: 13, weight: .medium)
         windowStatus.maximumNumberOfLines = 3
+        let statusRow = NSStackView(views: [statusSymbol, windowStatus])
+        statusRow.orientation = .horizontal
+        statusRow.alignment = .centerY
+        statusRow.spacing = 8
 
-        let instructions = NSTextField(wrappingLabelWithString: "Choose a text field, then press Control+Option+Space to start or stop dictation.")
-        instructions.font = .systemFont(ofSize: 13)
-        instructions.maximumNumberOfLines = 3
+        startButton = NSButton(title: "Start Dictation", target: self, action: #selector(toggleFromMenu))
+        startButton.bezelStyle = .rounded
+        startButton.keyEquivalent = "\r"
 
-        let start = NSButton(title: "Start / Stop Dictation", target: self, action: #selector(toggleFromMenu))
-        let microphone = NSButton(title: "Request Microphone Access", target: self, action: #selector(requestMicrophoneAccess))
-        let typingAccess = NSButton(title: "Allow Keyboard Typing Access", target: self, action: #selector(requestTypingAccess))
-        let install = NSButton(title: "Install Speech Model…", target: self, action: #selector(installSpeechAssets))
-        let modeLabel = NSTextField(labelWithString: "Typing mode")
+        let modeLabel = NSTextField(labelWithString: "Dictation style")
+        modeLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         modePicker = NSPopUpButton()
-        modePicker.addItems(withTitles: ["Verbatim (fastest)", "Polished (local AI)"])
+        modePicker.addItems(withTitles: ["Verbatim", "Polished"])
         modePicker.selectItem(at: UserDefaults.standard.string(forKey: "typingMode") == PolishingMode.polished.rawValue ? 1 : 0)
         modePicker.target = self
         modePicker.action = #selector(modeChanged)
-        let modelLabel = NSTextField(labelWithString: "Local polish model")
+        modeExplanation = NSTextField(wrappingLabelWithString: "Types recognized words with minimal changes.")
+        modeExplanation.font = .systemFont(ofSize: 12)
+        modeExplanation.textColor = .secondaryLabelColor
+        modeExplanation.maximumNumberOfLines = 2
+
+        let modelLabel = NSTextField(labelWithString: "Cleanup model")
+        modelLabel.font = .systemFont(ofSize: 12, weight: .medium)
         modelPicker = NSPopUpButton()
-        modelPicker.addItems(withTitles: PolishingModel.allCases.map(\.title))
+        modelPicker.addItems(withTitles: PolishingModel.allCases.map { $0 == .qwen025 ? "Recommended · Qwen 0.5B" : $0.title })
         let savedModel = UserDefaults.standard.string(forKey: "polishingModel") ?? PolishingModel.qwen025.rawValue
         modelPicker.selectItem(at: PolishingModel.allCases.firstIndex(where: { $0.rawValue == savedModel }) ?? 0)
         modelPicker.target = self
         modelPicker.action = #selector(modelChanged)
-        installPolisherButton = NSButton(title: "Install Local Polishing Model…", target: self, action: #selector(installPolisher))
-        polisherStatus = NSTextField(wrappingLabelWithString: "Local model status: not installed")
+        polisherStatus = NSTextField(wrappingLabelWithString: "Cleanup model is not installed.")
+        polisherStatus.font = .systemFont(ofSize: 12)
+        polisherStatus.textColor = .secondaryLabelColor
         polisherStatus.maximumNumberOfLines = 2
-        let stack = NSStackView(views: [title, windowStatus, instructions, start, microphone, typingAccess, install, modeLabel, modePicker, modelLabel, modelPicker, polisherStatus, installPolisherButton])
+        installPolisherButton = NSButton(title: "Download Cleanup Model…", target: self, action: #selector(installPolisher))
+        polisherSection = NSStackView(views: [modelLabel, modelPicker, polisherStatus, installPolisherButton])
+        polisherSection.orientation = .vertical
+        polisherSection.alignment = .leading
+        polisherSection.spacing = 7
+
+        let modeStack = NSStackView(views: [modeLabel, modePicker, modeExplanation, polisherSection])
+        modeStack.orientation = .vertical
+        modeStack.alignment = .leading
+        modeStack.spacing = 8
+
+        let permissionsTitle = NSTextField(labelWithString: "Access")
+        permissionsTitle.font = .systemFont(ofSize: 13, weight: .semibold)
+        let microphone = NSButton(title: "Microphone Access…", target: self, action: #selector(requestMicrophoneAccess))
+        let typingAccess = NSButton(title: "Accessibility Settings…", target: self, action: #selector(requestTypingAccess))
+        let installSpeech = NSButton(title: "Set Up Offline Speech…", target: self, action: #selector(installSpeechAssets))
+        let accessStack = NSStackView(views: [permissionsTitle, microphone, typingAccess, installSpeech])
+        accessStack.orientation = .vertical
+        accessStack.alignment = .leading
+        accessStack.spacing = 7
+
+        let instructions = NSTextField(wrappingLabelWithString: "Click in a text field first. Use Control+Option+Space to start and stop.")
+        instructions.font = .systemFont(ofSize: 12)
+        instructions.textColor = .secondaryLabelColor
+        instructions.maximumNumberOfLines = 2
+        let stack = NSStackView(views: [heading, subtitle, statusRow, startButton, modeStack, accessStack, instructions])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 12
+        stack.spacing = 13
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 550))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 500))
         content.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -24),
-            stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 24),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -24),
-            windowStatus.widthAnchor.constraint(equalToConstant: 392),
-            instructions.widthAnchor.constraint(equalToConstant: 392)
+            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 22),
+            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -22),
+            stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 20),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -20),
+            windowStatus.widthAnchor.constraint(equalToConstant: 350),
+            modeExplanation.widthAnchor.constraint(lessThanOrEqualToConstant: 350),
+            polisherStatus.widthAnchor.constraint(lessThanOrEqualToConstant: 350),
+            instructions.widthAnchor.constraint(lessThanOrEqualToConstant: 350),
+            startButton.widthAnchor.constraint(equalTo: stack.widthAnchor)
         ])
 
         controlWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 550),
-            styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 500),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
-        controlWindow.title = "TypingCore Voice Typing"
+        controlWindow.title = "MacVoice"
         controlWindow.contentView = content
         controlWindow.isReleasedWhenClosed = false
+        controlWindow.minSize = NSSize(width: 390, height: 440)
+        controlWindow.defaultButtonCell = startButton.cell as? NSButtonCell
+        updateModeUI()
         controlWindow.center()
     }
 
@@ -164,8 +234,17 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         controlWindow?.makeKeyAndOrderFront(nil)
     }
 
+    private func brandImage(named name: String) -> NSImage? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "png") else { return nil }
+        return NSImage(contentsOf: url)
+    }
+
     @objc private func toggleFromMenu() {
         toggleListening()
+    }
+
+    @objc private func openSettings() {
+        showControlWindow()
     }
 
     private func toggleListening() {
@@ -206,9 +285,15 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let granted = CGRequestPostEventAccess()
-        setStatus(granted
-            ? "Keyboard typing access granted"
-            : "Enable VoiceTyping in System Settings → Privacy & Security → Accessibility, then reopen the app")
+        guard !granted else {
+            setStatus("Keyboard typing access granted")
+            return
+        }
+
+        setStatus("Enable MacVoice under Privacy & Security → Accessibility, then reopen the app")
+        if let settingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(settingsURL)
+        }
     }
 
     @objc private func installSpeechAssets() {
@@ -227,15 +312,16 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     @objc private func modeChanged() {
         let mode: PolishingMode = modePicker.indexOfSelectedItem == 1 ? .polished : .verbatim
         UserDefaults.standard.set(mode.rawValue, forKey: "typingMode")
+        updateModeUI()
         configureSession()
-        setStatus(mode == .polished ? "Polished mode · local model required" : "Verbatim mode · direct typing")
+        setStatus(mode == .polished ? "Polished mode selected" : "Verbatim mode selected")
     }
 
     @objc private func modelChanged() {
         let model = PolishingModel.allCases[modelPicker.indexOfSelectedItem]
         UserDefaults.standard.set(model.rawValue, forKey: "polishingModel")
         updatePolisherStatus()
-        setStatus("Selected \(model.title). Install it before choosing Polished mode.")
+        setStatus("Cleanup model changed")
         configureSession()
     }
 
@@ -266,7 +352,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         process.standardOutput = logHandle
         process.standardError = logHandle
         installPolisherButton.isEnabled = false
-        setStatus("Setting up Python/MLX and downloading \(model.title)… Internet is used only for this explicit setup.")
+        installPolisherButton.title = "Downloading…"
+        setStatus("Downloading the cleanup model. This may take a few minutes.")
         process.terminationHandler = { [weak self] process in
             try? logHandle?.synchronize()
             try? logHandle?.close()
@@ -275,7 +362,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.installPolisherButton.isEnabled = true
-                self.setStatus(process.terminationStatus == 0 ? "Local model installed · inference stays on this Mac" : "Model setup failed: \(detail.suffix(220))")
+                self.installPolisherButton.title = "Download Cleanup Model…"
+                self.setStatus(process.terminationStatus == 0 ? "Cleanup model installed · processing stays on this Mac" : "Model setup failed: \(detail.suffix(220))")
                 self.updatePolisherStatus()
             }
         }
@@ -347,8 +435,20 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let installed = FileManager.default.isExecutableFile(atPath: root.appendingPathComponent("venv/bin/python3").path)
             && FileManager.default.fileExists(atPath: root.appendingPathComponent("models/\(model.rawValue)/config.json").path)
         polisherStatus.stringValue = installed
-            ? "Local model status: \(model.title) installed"
-            : "Local model status: \(model.title) not installed · Polished mode will fall back to verbatim"
+            ? "Cleanup model is installed and runs on this Mac."
+            : "Cleanup model is not installed. Polished mode will use Verbatim until setup is complete."
+    }
+
+    private func updateModeUI() {
+        guard modePicker != nil else { return }
+        let polished = modePicker.indexOfSelectedItem == 1
+        modeExplanation.stringValue = polished
+            ? "Tidies punctuation and phrasing on this Mac; it can take a little longer."
+            : "Types recognized words with minimal changes."
+        polisherSection.isHidden = !polished
+        polisherSection.setAccessibilityElement(true)
+        polisherSection.setAccessibilityLabel("Polished mode cleanup model settings")
+        updatePolisherStatus()
     }
 
     @objc private func quit() {
@@ -359,22 +459,42 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         switch state {
         case .idle:
             setStatus("Idle")
+            statusSymbol.contentTintColor = .tertiaryLabelColor
+            startButton?.title = "Start Dictation"
+            startButton?.isEnabled = true
+            toggleMenuItem?.title = "Start Dictation"
             modePicker?.isEnabled = true
             modelPicker?.isEnabled = true
         case .starting:
-            setStatus("Starting…")
+            setStatus("Starting dictation…")
+            statusSymbol.contentTintColor = .controlAccentColor
+            startButton?.title = "Starting…"
+            startButton?.isEnabled = false
+            toggleMenuItem?.title = "Starting…"
             modePicker?.isEnabled = false
             modelPicker?.isEnabled = false
         case .listening:
-            setStatus("● Listening · ⌃⌥Space to stop")
+            setStatus("Listening · Control+Option+Space to stop")
+            statusSymbol.contentTintColor = .systemRed
+            startButton?.title = "Stop Dictation"
+            startButton?.isEnabled = true
+            toggleMenuItem?.title = "Stop Dictation"
             modePicker?.isEnabled = false
             modelPicker?.isEnabled = false
         case .stopping:
-            setStatus("Stopping…")
+            setStatus("Finishing dictation…")
+            statusSymbol.contentTintColor = .controlAccentColor
+            startButton?.title = "Finishing…"
+            startButton?.isEnabled = false
+            toggleMenuItem?.title = "Finishing…"
             modePicker?.isEnabled = false
             modelPicker?.isEnabled = false
         case .failed(let message):
-            setStatus(message)
+            setStatus("Dictation failed: \(message)")
+            statusSymbol.contentTintColor = .systemOrange
+            startButton?.title = "Try Again"
+            startButton?.isEnabled = true
+            toggleMenuItem?.title = "Try Dictation Again"
             modePicker?.isEnabled = true
             modelPicker?.isEnabled = true
         }
@@ -383,6 +503,16 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private func setStatus(_ text: String) {
         statusLine?.title = text
         windowStatus?.stringValue = text
-        statusItem?.button?.title = text.hasPrefix("●") ? "Voice: Listening" : "Voice: Idle"
+        let normalized = text.lowercased()
+        let statusTitle: String
+        if normalized.contains("listen") { statusTitle = "Listening" }
+        else if normalized.contains("start") { statusTitle = "Starting" }
+        else if normalized.contains("finish") || normalized.contains("stopp") { statusTitle = "Finishing" }
+        else if normalized.contains("fail") || normalized.contains("denied") || normalized.contains("unavailable") || normalized.contains("enable macvoice") || normalized.contains("could not") { statusTitle = "Attention" }
+        else { statusTitle = "Ready" }
+        statusItem?.button?.title = "MacVoice · \(statusTitle)"
+        statusSymbol?.contentTintColor = statusTitle == "Attention" ? .systemOrange : (statusTitle == "Listening" ? .systemRed : .tertiaryLabelColor)
+        statusItem?.button?.setAccessibilityLabel("MacVoice, \(statusTitle)")
+        statusLine?.setAccessibilityLabel("MacVoice status: \(text)")
     }
 }

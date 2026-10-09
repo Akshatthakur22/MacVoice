@@ -1,176 +1,120 @@
-# TypingCore prototype
+<p align="center">
+  <img src="Brand/Exports/macvoice-logo-light.png" alt="MacVoice — Speak. Type. Done." width="720">
+</p>
 
-A small macOS-only Swift package that progressively posts Unicode-bearing Quartz
-keyboard events to the currently focused app. It has no third-party dependencies
-and does not use the clipboard. It is intentionally separate from the Typer app.
+# MacVoice
 
-## Build and manual probe
+**Your voice, straight to the cursor.**
 
-```sh
-cd TypingCore
-swift build
-swift run TypingCoreDemo basic
-swift run TypingCoreDemo unicode
-swift run TypingCoreDemo long
-swift run TypingCoreDemo newline --newline=newline
-```
+MacVoice is a local-first voice-typing utility for macOS. Focus a text field, start dictation with a shortcut, speak, and MacVoice attempts to type the recognized words into the app you are already using. Choose **Verbatim** for the direct path or **Polished** for optional local text cleanup.
 
-The demo waits five seconds, then types into the currently focused field. Try the
-basic sample in TextEdit and a browser text field, then try Unicode and long text.
-The demo reports elapsed time, graphemes/second, process CPU time, and resident
-memory before and after the typing run. These are process-level measurements, not
-system-wide CPU measurements. Enqueue-to-completion time is reported; true
-first-event latency and whether a particular app accepted every character need an
-event-tap or target-side probe. This prototype has not been manually validated in
-every target app or language input method.
+> **Project status:** Prototype in active development. Text insertion and transcription quality still need broader testing; recent manual use has exposed rough and sometimes garbled output. Do not treat one successful session as a reliability or compatibility guarantee.
 
-The sample corpus covers ordinary prose, punctuation, digits, ASCII symbols,
-accented Latin, Indian currency, typographic punctuation, emoji, Hindi, newline
-handling, and a repeated paragraph. Newline handling is configurable with
-`--newline=newline|enter|shift-enter|omit`; the demo defaults to `newline`.
-`shift-enter` tries the common chat line-break shortcut. Library callers
-must select a `NewlineBehavior` when constructing the engine, so the behavior
-is never silently guessed. Compare the expected
-output in a plain text editor and record the macOS version, target app, and
-keyboard/input source. Secure Input fields are expected to reject or suppress
-injected events.
+## How it works
 
-Additional demo vectors: `punctuation`, `typography`, `whitespace`, `unicode`,
-`combining`, `emoji`, and `speech`. `--delay=0|1|5|10` selects inter-grapheme
-pacing in milliseconds. `stream` rapidly queues append chunks, including a
-split emoji sequence. `cancel` queues a long run and stops after 50 ms;
-`cancel-now` tests stop immediately after enqueue. These
-exercise the engine path but still require checking the resulting text in the
-target application.
+1. Focus the destination text field.
+2. Press **Control + Option + Space** or click **Start / Stop Dictation**.
+3. MacVoice captures audio in memory and uses Apple's Speech framework to recognize speech for the current system locale.
+4. The app ignores provisional speech hypotheses and passes confirmed text onward.
+5. **Verbatim** sends that text directly to TypingCore. **Polished** buffers phrases and runs them through an optional local language model.
+6. TypingCore posts Quartz keyboard events to the currently focused app. It does not use the clipboard as its normal insertion path.
 
-Shift+Return uses an internal 25 ms settling pause on both sides of the line
-break. This gives apps time to process adjacent text without slowing every
-ordinary character or requiring a per-app delay setting. It remains best-effort:
-target applications can still interpret keyboard events differently.
+The app needs microphone permission to listen and Accessibility permission to post keyboard events. Keyboard-event posting is application-dependent: macOS does not confirm that the destination accepted or inserted every character.
 
-## API
+After launch, MacVoice stays in the background as a menu-bar utility. Its top-right status shows **Ready**, **Starting**, **Listening**, **Finishing**, or **Attention**; open the menu-bar item to read the full status message, start or stop dictation, open settings, or quit. Closing the control window leaves the menu-bar app and global shortcut active. Launch-at-login is not currently configured.
 
-```swift
-let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .newline)
-engine.type("Hello, world!") { result in
-    // Completion runs on the main queue. Success means events were posted,
-    // not that the focused app accepted or rendered them.
-}
+## Modes
 
-// Later speech output that is genuinely new:
-engine.append(" How are you?")
+| Mode | What happens | Trade-off |
+| --- | --- | --- |
+| **Verbatim** | Confirmed speech text goes directly to the typing engine. | Lowest processing overhead; wording and punctuation depend on speech recognition. |
+| **Polished (local AI)** | Confirmed text is buffered by punctuation and stop, then sent to a local MLX-LM worker. | Adds phrase-level delay. Current validation allows punctuation/case changes and a few filler removals; it rejects broader word rewrites. |
 
-// Cancels queued work at the next grapheme boundary:
-engine.stop()
-```
+Polishing is optional. If the model is unavailable or its output fails validation, the original recognized phrase is used where possible. Polished mode does not correct audio recognition itself.
 
-Calls are submitted to a serial utility queue and return immediately. The default
-5 ms inter-grapheme delay is a compatibility knob to avoid sending a dense burst;
-use zero for minimum latency and test it in the actual target app. Stop does not
-undo text already delivered. A caller must serialize transcript corrections and
-decide whether to append, revise, or ignore them.
+## Requirements and setup
 
-## Scope and limitations
+- macOS 26 or later for the current Apple SpeechAnalyzer provider.
+- The current distributed build is arm64, so it runs on Apple Silicon Macs; Intel support would require a separate x86_64/universal build.
+- Xcode Command Line Tools / Swift Package Manager to build from source.
+- Microphone access to capture speech.
+- Accessibility access for keyboard-event typing.
+- Speech assets for the selected system locale. Install them with **Install Speech Model** while online; the app does not download them automatically when dictation starts.
 
-`CGEvent.keyboardSetUnicodeString` supplies UTF-16 text on a Quartz keyboard
-event. Apple documents that application frameworks may ignore that Unicode
-payload and translate the virtual keycode/event state themselves. Therefore this
-is layout-independent in the event payload, but it is not universal text
-insertion. The engine uses virtual keycode zero for printable graphemes. Tab is
-sent as a Unicode control payload instead of a Tab keycode to avoid
-intentionally moving focus. Newlines have four explicit modes: `.newline`
-preserves CR and LF scalar payloads, `.enter` maps each CR/LF scalar to Return,
-`.shiftEnter` maps each to Shift+Return, and `.omit` skips line breaks. For
-`.newline`, a CRLF pair is sent as CR then LF,
-even when split across append calls. There is no CGEvent guarantee that Unicode control payloads become text
-instead of app commands; a chat field may still treat LF as Send. Tab insertion
-also remains app-dependent. IMEs, secure fields, games, remote desktops, and apps with
-custom text handling may ignore or transform events. Emoji and scripts such as Hindi
-are passed as one Swift grapheme's UTF-16 sequence, but target-app support must be
-measured; CGEvent does not perform normal keyboard-layout or IME composition.
+### Disk space
 
-The only permission check included is `CGPreflightPostEventAccess()`. The host
-application owns any permission request and user-facing explanation. Event posts
-are asynchronous from the engine's perspective: Core Graphics offers no receipt
-that the target inserted a character. Completion returns a `TypingReport` with
-the number of event pairs submitted and time-to-first-post, or an error with the
-partial count where relevant. This is not a text-insertion acknowledgement. A low-level event should not be described
-as indistinguishable from a physical keyboard; this module's goal is progressive
-keyboard-event delivery rather than hardware authenticity.
+- The current locally built `MacVoice.app` is approximately **1.2 MB**. Bundle size can vary with the compiler, architecture, and included assets.
+- Verbatim mode does not require a separate application-side model download. macOS manages the speech assets independently, and their size depends on the selected locale.
+- Polished mode currently needs approximately **680 MB** for the Python/MLX environment plus the Qwen2.5-0.5B-Instruct 4-bit model under `~/Library/Application Support/Typer/MLX/`. Installing both available models takes about **970 MB** on this development Mac. Package caches and future model revisions can change these figures.
+- Building from source can use additional temporary SwiftPM data. The current `.build/` directory is approximately **585 MB** and is not part of the installed app.
 
-`Tests/TypingCoreTests` contains transcript reconciliation and PCM value tests,
-plus a deterministic fake recognizer. These tests do not exercise microphone or
-destination-app behavior. See [COMPATIBILITY.md](COMPATIBILITY.md) for observed
-app test status.
-
-## Voice typing prototype
-
-The package also includes a separate `VoiceTypingCore` library and a small
-macOS app with a control window and menu-bar status item. The host requires
-macOS 26 or later and uses Apple's on-device `SpeechAnalyzer` for the current
-system locale. Press **Control+Option+Space** to toggle listening. Choose
-**Install Speech Model** while online before using the app offline; starting a
-session does not download speech assets.
-
-Build a local app bundle with:
+Build and install the app in your user Applications folder:
 
 ```sh
 ./scripts/build_voice_typing_app.sh
-open dist/VoiceTyping.app
+mkdir -p "$HOME/Applications"
+ditto dist/MacVoice.app "$HOME/Applications/MacVoice.app"
+open "$HOME/Applications/MacVoice.app"
 ```
 
-Run the deterministic transcript safety checks without a test framework:
+Local builds use the stable `MacVoice Local Development` signing certificate in your login Keychain. Keeping that certificate for rebuilds gives macOS a stable Accessibility identity; after switching from an older ad-hoc build, enable **MacVoice** once in **System Settings → Privacy & Security → Accessibility**, then quit and reopen the app. The certificate is only for local development and must not be used to distribute MacVoice. On a machine without it, the build script stops instead of silently creating a new ad-hoc identity; set `MACVOICE_ALLOW_ADHOC_SIGNING=1` only for a temporary build, knowing macOS may require reauthorizing Accessibility after each rebuild.
+
+### Optional local polishing setup
+
+Polished mode requires Apple Silicon, Python 3.10–3.13, and an internet connection for the explicit one-time setup. Choose **Polished**, then **Download Cleanup Model** in the app to install MLX-LM and the selected model. The current primary choice is Qwen2.5-0.5B-Instruct 4-bit. Model and Python files are stored under `~/Library/Application Support/Typer/MLX/` to preserve existing installations.
+
+Normal local inference uses those files on the Mac; the app does not send the audio or transcript to a cloud inference service. Speech assets are installed and managed separately by macOS. See [the model guide](doc/MODEL.md) for model choices and [the performance guide](doc/PERFORMANCE.md) for benchmark results and limits.
+
+## Privacy and data handling
+
+- Audio frames are held in process memory during an active session; the app does not save recordings.
+- The app does not maintain a transcript history or app database.
+- Speech assets are managed by macOS. Their installation may download data from Apple.
+- Optional model setup downloads packages and model files. Ordinary polishing uses the locally installed worker and model.
+- Accessibility permission is used for keyboard-event insertion into the focused app.
+- No product analytics or transcript telemetry is implemented.
+
+These statements describe this repository's current design and should be rechecked before a public release.
+
+## Compatibility and known limits
+
+- The receiving app and field determine whether posted Unicode and newline events are accepted. Secure fields, custom editors, IMEs, remote desktops, and chat composers may behave differently.
+- The app uses the current system locale and reports unsupported locales. Hindi, Hinglish, and other languages are not verified by this project.
+- Speech recognition quality, punctuation, and technical vocabulary have not been evaluated across a representative test corpus.
+- Global shortcut input monitoring and keyboard-event posting are distinct macOS permissions; the current UI primarily explains Accessibility typing access.
+- The current user-facing experience has had manual reports of repeated or garbled text. The cause and cross-app behavior remain under investigation.
+
+See [the compatibility guide](doc/COMPATIBILITY.md) for tested and untested destinations. A successful insertion in one app does not establish compatibility everywhere.
+
+## Development
 
 ```sh
+swift build
+swift run TypingCoreDemo basic
 swift run VoiceTypingCoreChecks
 ```
 
-The host requests microphone access on the first explicit start. The app bundle
-declares the microphone usage description. Use **Allow Keyboard Typing Access**
-to request macOS Accessibility permission for event posting. Audio buffers stay
-in memory; provisional hypotheses are not typed, and only confirmed text reaches
-`TypingCore.append`. Speech assets are installed and managed by macOS rather than
-stored inside the app bundle. The user has confirmed one English dictation into
-TextEdit; other apps and languages still need testing.
+The reusable `TypingCore` library handles text encoding and Quartz keyboard events. `VoiceTypingCore` connects audio capture, speech recognition, transcript reconciliation, and the optional polishing coordinator. `VoiceTypingApp` is the AppKit host. See [the architecture guide](doc/ARCHITECTURE.md) for the component flow.
 
-This is an early prototype. Apple's model locale support is checked at runtime;
-Hindi and Hinglish support are not claimed until verified. See [ARCHITECTURE.md](ARCHITECTURE.md),
-[MODEL.md](MODEL.md), and [PERFORMANCE.md](PERFORMANCE.md).
+Brand principles and vector artwork live in [the brand guide](doc/BRAND.md), [the design system](doc/DESIGN_SYSTEM.md), and [`Brand/`](Brand/README.md).
 
-## Optional local transcript polishing
+## Project structure
 
-The VoiceTyping window offers **Verbatim** (the default) and **Polished (local AI)** modes.
-Verbatim preserves the existing low-latency path and does not start Python or load an LLM.
-Polished mode buffers confirmed text until sentence punctuation, then sends one phrase at a time
-to a persistent local MLX-LM worker. The remaining phrase is polished when dictation stops.
-SpeechAnalyzer currently exposes no pause timing to this integration, so punctuation and stop
-are the phrase boundaries; a silence-based boundary is not implemented.
+- `Sources/TypingCore/` — append-only keyboard-event typing engine.
+- `Sources/VoiceTypingCore/Audio/` — in-memory microphone capture.
+- `Sources/VoiceTypingCore/Speech/` — speech-recognizer contract and Apple SpeechAnalyzer adapter.
+- `Sources/VoiceTypingCore/Transcript/` — confirmed transcript reconciliation.
+- `Sources/VoiceTypingCore/Polishing/` — phrase buffering, local model bridge, and output validation.
+- `Sources/VoiceTypingCore/Integration/` — session lifecycle and component coordination.
+- `Sources/VoiceTypingApp/` — native macOS control window and menu-bar app.
+- `Resources/` and `scripts/` — app metadata, local model worker, setup, build, and benchmark tools.
+- `Brand/` — editable SVG source and exported MacVoice identity assets.
+- `Tests/` — deterministic library-level tests; these do not verify microphone capture or destination-app insertion.
 
-The primary model is `mlx-community/Qwen2.5-0.5B-Instruct-4bit` at revision
-`a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3`. The comparison choice is
-`mlx-community/SmolLM2-360M-Instruct-6bit` at revision
-`642affd1f9e387d1b56c745894afc83795aebe1d`; its available MLX artifact is 6-bit,
-not 4-bit. Select a model in the window and choose **Install Local Polishing Model**.
-Setup requires Apple Silicon, macOS 26+, Python 3.10–3.13, and an internet connection for the
-one-time MLX-LM environment and model download. Files go to
-`~/Library/Application Support/Typer/MLX/`. Normal inference uses only those local files
-and does not send audio or transcript text over the network. The worker loads its selected
-model once and stays alive for inference requests. The app does not bundle Python or model
-weights; Python and the model are installed separately in that user support directory.
+## Brand and claims
 
-Polished mode never types an unpolished phrase first. Failed/invalid AI responses fall back
-to the original phrase. The worker has a 12-second request timeout. Validation allows
-punctuation/case changes and removal of `um`, `uh`, or `erm`, but requires all other words
-to remain in the same order. This intentionally rejects broader grammar rewrites; it reduces
-meaning changes but cannot prove semantic fidelity.
-At more than 16 waiting phrases the session stops taking new audio and drains queued phrases
-verbatim to avoid dropping confirmed words. `TypingCore` remains unchanged and append-only.
-After setup, compare both installed choices with `python3 scripts/benchmark_local_polisher.py`;
-it reports cold worker startup, warm median/p95 phrase latency, first-token latency, and all
-output/reference pairs, child CPU and peak RSS, and exploratory WER/CER. Run one model per
-invocation for clean child RSS measurements. The local benchmark results are recorded in
-`PERFORMANCE.md`; reference text metrics are not a substitute for semantic review.
+MacVoice's primary tagline is **Speak. Type. Done.** The product is intended to be a focused voice keyboard, not a general AI assistant. The brand guide distinguishes product intent from implemented and verified behavior. Avoid claims such as “works everywhere,” “zero latency,” “perfect accuracy,” or “100% private.”
 
-After installation, verify the Swift-to-worker bridge with
-`swift run VoiceTypingCoreChecks --mlx`. It performs one real local phrase cleanup and then
-shuts down the persistent worker.
+## License
+
+No repository license file is present yet. Do not assume the project or its artwork is licensed for redistribution until a license is added.
