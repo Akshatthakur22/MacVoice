@@ -7,7 +7,7 @@
 - `SpeechRecognizer` is the replaceable backend contract. The current provider, `AppleSpeechAnalyzerRecognizer`, uses the macOS Speech framework on macOS 26 and later.
 - `TranscriptReconciler` ignores provisional hypotheses, accepts only cumulative confirmed text, rejects revisions to confirmed UTF-8 bytes, and withholds the last grapheme until a later update/finalization.
 - `VoiceTypingSession` owns the Idle → Starting → Listening → Stopping → Idle / Failed lifecycle and connects the components.
-- `GlobalShortcut` registers Control+Option+Space using Carbon. `VoiceTypingApp` is a small AppKit menu-bar host.
+- `GlobalShortcut` registers a configurable Carbon hotkey (Control+Option+Space by default). The AppKit host stores the key code, Carbon modifier mask, and display label together in one `UserDefaults` dictionary; failed registrations restore the previous binding.
 
 ```text
 Menu-bar host / hotkey
@@ -47,8 +47,7 @@ reconciler ignores provisional hypotheses and rejects changes to confirmed text.
 The audio tap callback copies hardware Float32 samples into an interleaved
 `[Float]` value, then yields it to the bounded stream. Resampling and format
 conversion happen on the recognizer consumer task, outside the audio callback.
-Audio exists only in process memory while the session is active. No recordings,
-recognized transcript history, or app database/preferences are written to disk.
+Audio exists only in process memory while the session is active. No recordings or recognized transcript history are written to disk. UI preferences (typing mode, appearance, and global shortcut) are stored in `UserDefaults`.
 
 Installing speech assets is the exception to the app-local storage boundary:
 the app asks macOS to install and manage those assets. They are not bundled in

@@ -13,7 +13,7 @@ MacVoice is a local-first voice-typing utility for macOS. Focus a text field, st
 ## How it works
 
 1. Focus the destination text field.
-2. Press **Control + Option + Space** or click **Start / Stop Dictation**.
+2. Press the configured global shortcut (default **Control + Option + Space**) or click **Start Dictation**.
 3. MacVoice captures audio in memory and uses Apple's Speech framework to recognize speech for the current system locale.
 4. The app ignores provisional speech hypotheses and passes confirmed text onward.
 5. **Verbatim** sends that text directly to TypingCore. **Polished** buffers phrases and runs them through an optional local language model.
@@ -21,7 +21,9 @@ MacVoice is a local-first voice-typing utility for macOS. Focus a text field, st
 
 The app needs microphone permission to listen and Accessibility permission to post keyboard events. Keyboard-event posting is application-dependent: macOS does not confirm that the destination accepted or inserted every character.
 
-After launch, MacVoice stays in the background as a menu-bar utility. Its top-right status shows **Ready**, **Starting**, **Listening**, **Finishing**, or **Attention**; open the menu-bar item to read the full status message, start or stop dictation, open settings, or quit. Closing the control window leaves the menu-bar app and global shortcut active. Launch-at-login is not currently configured.
+The native control window has Dictate, Modes, Shortcut, Settings, and About tabs. In Shortcut, choose **Change…**, press a key combination containing Control, Option, or Command, or press Escape to cancel. If the system reports that the combination is already in use, MacVoice keeps the previous shortcut. The default is Control + Option + Space. System, Light, and Dark appearance choices are available in Settings.
+
+After launch, MacVoice stays in the background as a menu-bar utility. Its top-right status shows **Ready**, **Starting**, **Listening**, **Finishing**, or **Attention**; open the menu-bar item to read the full status message, start or stop dictation, open settings, or quit. The control window lets you record a different global shortcut or restore the default. The menu shows the active shortcut. Closing the control window leaves the menu-bar app and shortcut active. Launch-at-login is not currently configured.
 
 ## Modes
 
@@ -81,7 +83,7 @@ These statements describe this repository's current design and should be recheck
 - The receiving app and field determine whether posted Unicode and newline events are accepted. Secure fields, custom editors, IMEs, remote desktops, and chat composers may behave differently.
 - The app uses the current system locale and reports unsupported locales. Hindi, Hinglish, and other languages are not verified by this project.
 - Speech recognition quality, punctuation, and technical vocabulary have not been evaluated across a representative test corpus.
-- Global shortcut input monitoring and keyboard-event posting are distinct macOS permissions; the current UI primarily explains Accessibility typing access.
+- The shortcut is configurable and registered by Carbon. Shortcut conflicts are rejected while the prior binding is restored. Global shortcut registration and Accessibility keyboard-event posting are distinct macOS capabilities.
 - The current user-facing experience has had manual reports of repeated or garbled text. The cause and cross-app behavior remain under investigation.
 
 See [the compatibility guide](doc/COMPATIBILITY.md) for tested and untested destinations. A successful insertion in one app does not establish compatibility everywhere.

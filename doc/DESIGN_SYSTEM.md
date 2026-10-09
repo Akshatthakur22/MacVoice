@@ -50,9 +50,9 @@ Prefer semantic macOS colors for native controls. Brand colors are not a replace
 ## Native app implementation
 
 - Use AppKit controls and the user's system appearance; reserve brand blue for the microphone mark and primary emphasis.
-- Keep the main window focused on Start/Stop, the current state, and the Verbatim/Polished choice. Show cleanup-model setup only in Polished mode.
+- Use native Dictate, Modes, Shortcut, Settings, and About tabs. Keep Start/Stop and current state in Dictate; expose shortcut recording in its own section and retain the Control+Option+Space default. Show cleanup-model setup only in Polished mode. Appearance can follow System or be set to Light or Dark.
 - Use explicit status text as well as a semantic color: Ready, Starting, Listening, Finishing, or an actionable failure.
-- Make the primary action reachable with Return and keep mode controls unavailable while a dictation is active.
+- Make the primary action reachable with Return, keep mode controls unavailable while a dictation is active, and show a keyboard-accessible shortcut recorder with a conflict-safe reset path.
 - Do not show polishing, typing, or success progress unless the session exposes those states. The current session reports starting, listening, stopping, and failure only.
 - Validate VoiceOver labels, keyboard focus order, reduced motion, and contrast in both appearances during manual release review.
 
