@@ -26,10 +26,13 @@ public enum VoiceTypingSessionError: Error, LocalizedError {
 public actor VoiceTypingSession {
     public private(set) var state: VoiceTypingState = .idle
     public var onStateChange: ((VoiceTypingState) -> Void)?
+    public var onWarning: ((String) -> Void)?
 
     private let audioCapture: AudioCapture
     private let recognizer: any SpeechRecognizer
     private let typingEngine: TypingEngine
+    private let polishingMode: PolishingMode
+    private let polishingCoordinator: PolishingCoordinator
     private var reconciler = TranscriptReconciler()
     private var audioContinuation: AsyncStream<PCMFrame>.Continuation?
     private var updateContinuation: AsyncStream<SpeechRecognitionUpdate>.Continuation?
@@ -37,15 +40,21 @@ public actor VoiceTypingSession {
     private var updateTask: Task<Void, Never>?
     private var generation: UInt64 = 0
 
-    public init(audioCapture: AudioCapture, recognizer: any SpeechRecognizer, typingEngine: TypingEngine) {
+    public init(audioCapture: AudioCapture, recognizer: any SpeechRecognizer, typingEngine: TypingEngine,
+                polisher: any TranscriptPolisher = PassthroughTranscriptPolisher(),
+                polishingMode: PolishingMode = .verbatim) {
         self.audioCapture = audioCapture
         self.recognizer = recognizer
         self.typingEngine = typingEngine
+        self.polishingMode = polishingMode
+        self.polishingCoordinator = PolishingCoordinator(engine: typingEngine, polisher: polisher, mode: polishingMode)
     }
 
     public func setStateChangeHandler(_ handler: ((VoiceTypingState) -> Void)?) {
         onStateChange = handler
     }
+
+    public func setWarningHandler(_ handler: ((String) -> Void)?) { onWarning = handler }
 
     /// Loads/starts recognition first, then starts microphone capture. The host
     /// must request microphone permission before calling this method.
@@ -57,6 +66,21 @@ public actor VoiceTypingSession {
         let ticket = generation
         setState(.starting)
         reconciler.reset()
+        if polishingMode == .polished {
+            await polishingCoordinator.begin()
+            await polishingCoordinator.setErrorHandler { [weak self] error in
+                Task { await self?.reportWarning(error.localizedDescription) }
+            }
+            await polishingCoordinator.setTypingFailureHandler { [weak self] error in
+                // TypingEngine posts events asynchronously. A typing error can
+                // arrive after stop() has already returned the session to Idle;
+                // always surface it through the host's warning channel too.
+                Task { await self?.reportTypingFailure(error) }
+            }
+            await polishingCoordinator.setQueuePressureHandler { [weak self] in
+                Task { await self?.fail(VoiceTypingSessionError.audioBufferOverrun) }
+            }
+        }
 
         let (audioStream, audioStreamContinuation) = AsyncStream<PCMFrame>.makeStream(
             bufferingPolicy: .bufferingOldest(32)
@@ -135,6 +159,7 @@ public actor VoiceTypingSession {
         await recognizer.stop()
         updateContinuation?.finish()
         await updateTask?.value
+        if polishingMode == .polished { await polishingCoordinator.finish() }
         clearStreams()
         reconciler.reset()
         if !isFailed { setState(.idle) }
@@ -156,13 +181,19 @@ public actor VoiceTypingSession {
         try await recognizer.consume(frame)
     }
 
-    private func receive(_ update: SpeechRecognitionUpdate) {
+    private func receive(_ update: SpeechRecognitionUpdate) async {
         do {
             let stableDelta = try reconciler.consume(update)
             guard !stableDelta.isEmpty else { return }
-            typingEngine.append(stableDelta) { [weak self] result in
-                guard case .failure(let error) = result else { return }
-                Task { await self?.fail(error) }
+            if polishingMode == .verbatim {
+                // Preserve the pre-polishing pipeline exactly: stable text goes
+                // straight to TypingCore without passing through a coordinator.
+                typingEngine.append(stableDelta) { [weak self] result in
+                    guard case .failure(let error) = result else { return }
+                    Task { await self?.fail(error) }
+                }
+            } else {
+                await polishingCoordinator.consume(stableDelta)
             }
         } catch {
             Task { await fail(error) }
@@ -176,6 +207,8 @@ public actor VoiceTypingSession {
         audioContinuation?.finish()
         await recognizer.stop()
         updateContinuation?.finish()
+        await updateTask?.value
+        if polishingMode == .polished { await polishingCoordinator.finish() }
     }
 
     private func clearStreams() {
@@ -192,5 +225,12 @@ public actor VoiceTypingSession {
     private func setState(_ newState: VoiceTypingState) {
         state = newState
         onStateChange?(newState)
+    }
+
+    private func reportWarning(_ message: String) { onWarning?(message) }
+
+    private func reportTypingFailure(_ error: Error) async {
+        reportWarning("Typing failed: \(error.localizedDescription)")
+        if state != .idle { await fail(error) }
     }
 }

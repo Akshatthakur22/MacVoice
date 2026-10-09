@@ -617,6 +617,14 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift"
         },
         {
@@ -650,6 +658,8 @@
       "objects" : [
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swift.o",
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swift.o",
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o",
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swift.o",
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swift.o",
@@ -715,6 +725,8 @@
       "sources" : [
         "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Audio/AudioCapture.swift",
         "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift",
         "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift",
         "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/AppleSpeechAnalyzerRecognizer.swift",
         "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/SpeechRecognizer.swift",
@@ -1195,6 +1207,8 @@
       "-c",
       "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Audio/AudioCapture.swift",
       "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift",
       "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift",
       "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/AppleSpeechAnalyzerRecognizer.swift",
       "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/SpeechRecognizer.swift",
@@ -1475,6 +1489,14 @@
         {
           "kind" : "file",
           "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift"
         },
         {
           "kind" : "file",

@@ -81,7 +81,6 @@
         "-emit-objc-header",
         "-emit-objc-header-path",
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/include/TypingCore-Swift.h",
-        "-color-diagnostics",
         "-swift-version",
         "5",
         "-I",
@@ -186,7 +185,6 @@
         "-entry-point-function-name",
         "-Xfrontend",
         "TypingCoreDemo_main",
-        "-color-diagnostics",
         "-swift-version",
         "5",
         "-I",
@@ -278,7 +276,6 @@
         "-emit-objc-header",
         "-emit-objc-header-path",
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/include/TypingCorePackageTests-Swift.h",
-        "-color-diagnostics",
         "-I",
         "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
         "-L",
@@ -324,7 +321,15 @@
       "inputs" : [
         {
           "kind" : "file",
-          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift"
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/AudioCaptureTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/Support/MockSpeechRecognizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TranscriptReconcilerTests.swift"
         },
         {
           "kind" : "file",
@@ -336,6 +341,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/sources"
         }
       ],
@@ -343,7 +352,9 @@
       "moduleName" : "TypingCoreTests",
       "moduleOutputPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCoreTests.swiftmodule",
       "objects" : [
-        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.swift.o"
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/AudioCaptureTests.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/MockSpeechRecognizer.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TranscriptReconcilerTests.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -365,7 +376,6 @@
         "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
         "-parseable-output",
         "-parse-as-library",
-        "-color-diagnostics",
         "-swift-version",
         "5",
         "-I",
@@ -392,7 +402,15 @@
       "outputs" : [
         {
           "kind" : "file",
-          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.swift.o"
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/AudioCaptureTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/MockSpeechRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TranscriptReconcilerTests.swift.o"
         },
         {
           "kind" : "file",
@@ -401,9 +419,444 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift"
+        "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/AudioCaptureTests.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/Support/MockSpeechRecognizer.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TranscriptReconcilerTests.swift"
       ],
       "tempsPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.VoiceTypingApp-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build/sources",
+      "importPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingApp/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "VoiceTypingApp",
+      "moduleOutputPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingApp.swiftmodule",
+      "objects" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "VoiceTypingApp_main",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "typer"
+      ],
+      "outputFileMapPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingApp.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingApp/main.swift"
+      ],
+      "tempsPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.VoiceTypingBenchmark-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build/sources",
+      "importPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingBenchmark/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "VoiceTypingBenchmark",
+      "moduleOutputPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingBenchmark.swiftmodule",
+      "objects" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "VoiceTypingBenchmark_main",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "typer"
+      ],
+      "outputFileMapPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingBenchmark.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingBenchmark/main.swift"
+      ],
+      "tempsPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.VoiceTypingCore-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/sources",
+      "importPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Audio/AudioCapture.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/AppleSpeechAnalyzerRecognizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/SpeechRecognizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Transcript/TranscriptReconciler.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/TypingCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "VoiceTypingCore",
+      "moduleOutputPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingCore.swiftmodule",
+      "objects" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swift.o",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/include/VoiceTypingCore-Swift.h",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "typer"
+      ],
+      "outputFileMapPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingCore.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Audio/AudioCapture.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/AppleSpeechAnalyzerRecognizer.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/SpeechRecognizer.swift",
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Transcript/TranscriptReconciler.swift"
+      ],
+      "tempsPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.VoiceTypingCoreChecks-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build/sources",
+      "importPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCoreChecks/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "VoiceTypingCoreChecks",
+      "moduleOutputPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingCoreChecks.swiftmodule",
+      "objects" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "VoiceTypingCoreChecks_main",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "typer"
+      ],
+      "outputFileMapPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules/VoiceTypingCoreChecks.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCoreChecks/main.swift"
+      ],
+      "tempsPath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build",
       "wholeModuleOptimization" : false
     }
   },
@@ -444,7 +897,6 @@
       "-emit-objc-header",
       "-emit-objc-header-path",
       "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/include/TypingCore-Swift.h",
-      "-color-diagnostics",
       "-swift-version",
       "5",
       "-I",
@@ -499,7 +951,6 @@
       "-entry-point-function-name",
       "-Xfrontend",
       "TypingCoreDemo_main",
-      "-color-diagnostics",
       "-swift-version",
       "5",
       "-I",
@@ -556,7 +1007,6 @@
       "-emit-objc-header",
       "-emit-objc-header-path",
       "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.build/include/TypingCorePackageTests-Swift.h",
-      "-color-diagnostics",
       "-I",
       "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
       "-L",
@@ -586,7 +1036,9 @@
       "-package-name",
       "typer",
       "-c",
-      "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/AudioCaptureTests.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/Support/MockSpeechRecognizer.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TranscriptReconcilerTests.swift",
       "-I",
       "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
       "-target",
@@ -608,7 +1060,232 @@
       "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
       "-parseable-output",
       "-parse-as-library",
-      "-color-diagnostics",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "typer",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "VoiceTypingApp" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "VoiceTypingApp",
+      "-package-name",
+      "typer",
+      "-c",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingApp/main.swift",
+      "-I",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "VoiceTypingApp_main",
+      "-parse-as-library",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "typer",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "VoiceTypingBenchmark" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "VoiceTypingBenchmark",
+      "-package-name",
+      "typer",
+      "-c",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingBenchmark/main.swift",
+      "-I",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "VoiceTypingBenchmark_main",
+      "-parse-as-library",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "typer",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "VoiceTypingCore" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "VoiceTypingCore",
+      "-package-name",
+      "typer",
+      "-c",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Audio/AudioCapture.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/AppleSpeechAnalyzerRecognizer.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/SpeechRecognizer.swift",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Transcript/TranscriptReconciler.swift",
+      "-I",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/include/VoiceTypingCore-Swift.h",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "typer",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "VoiceTypingCoreChecks" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "VoiceTypingCoreChecks",
+      "-package-name",
+      "typer",
+      "-c",
+      "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCoreChecks/main.swift",
+      "-I",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "VoiceTypingCoreChecks_main",
+      "-parse-as-library",
       "-swift-version",
       "5",
       "-I",
@@ -643,9 +1320,26 @@
     ],
     "TypingCorePackageTests" : [
       "TypingCoreTests",
+      "VoiceTypingCore",
       "TypingCore"
     ],
     "TypingCoreTests" : [
+      "VoiceTypingCore",
+      "TypingCore"
+    ],
+    "VoiceTypingApp" : [
+      "VoiceTypingCore",
+      "TypingCore"
+    ],
+    "VoiceTypingBenchmark" : [
+      "VoiceTypingCore",
+      "TypingCore"
+    ],
+    "VoiceTypingCore" : [
+      "TypingCore"
+    ],
+    "VoiceTypingCoreChecks" : [
+      "VoiceTypingCore",
       "TypingCore"
     ]
   },
@@ -798,7 +1492,47 @@
         },
         {
           "kind" : "file",
-          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TextEncoderTests.swift.o"
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/AudioCaptureTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/MockSpeechRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/TranscriptReconcilerTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swift.o"
         }
       ],
       "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCorePackageTests.product/Objects.LinkFileList"
@@ -812,10 +1546,330 @@
         },
         {
           "kind" : "file",
-          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TextEncoderTests.swift"
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/AudioCaptureTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/Support/MockSpeechRecognizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Tests/TypingCoreTests/TranscriptReconcilerTests.swift"
         }
       ],
       "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCoreTests.build/sources"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp-entitlement.plist"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingApp/main.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build/sources"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/KeyboardEmitter.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingError.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingApp.product/Objects.LinkFileList"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark-entitlement.plist"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingBenchmark/main.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build/sources"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/KeyboardEmitter.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingError.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingBenchmark.product/Objects.LinkFileList"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Audio/AudioCapture.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/AppleSpeechAnalyzerRecognizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/SpeechRecognizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Transcript/TranscriptReconciler.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/sources"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks-entitlement.plist"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCoreChecks/main.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build/sources"
+    },
+    "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/KeyboardEmitter.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TextEncoder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/TypingCore.build/TypingError.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AppleSpeechAnalyzerRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/AudioCapture.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/SpeechRecognizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptReconciler.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.build/main.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/VoiceTypingCoreChecks.product/Objects.LinkFileList"
     },
     "/Users/akshatthakur22/Desktop/open source/Typer/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
       "alwaysOutOfDate" : true,

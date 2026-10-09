@@ -16,6 +16,20 @@
     "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.swiftdeps",
     "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/VoiceTypingSession.dia"
   },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/PolishingCoordinator.dia"
+  },
+  "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift": {
+    "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.d",
+    "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swift.o",
+    "swiftmodule": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher~partial.swiftmodule",
+    "swift-dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.swiftdeps",
+    "diagnostics": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/TranscriptPolisher.dia"
+  },
   "/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift": {
     "dependencies": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.d",
     "object": "/Users/akshatthakur22/Desktop/open source/Typer/.build/index-build/arm64-apple-macosx/debug/VoiceTypingCore.build/GlobalShortcut.swift.o",

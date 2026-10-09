@@ -24,8 +24,15 @@ VoiceTypingSession state machine
                        │ volatile + finalized results
                        ▼
                TranscriptReconciler
-                       │ append-only stable deltas
+                       │ confirmed deltas
                        ▼
+                Mode coordinator
+                  ┌─────┴─────┐
+              Verbatim     Polished
+                  │       phrase buffer
+                  │            │ local MLX worker
+                  └─────┬──────┘
+                        ▼
                 TypingCore.append
                        │ Quartz keyboard events
                        ▼
@@ -56,6 +63,17 @@ operation from the menu and may download Apple-managed model assets. Once
 installed, recognition is on-device. macOS manages and may reclaim those assets;
 the app checks availability again on each start. If assets are absent, the app
 does not silently use a network recognizer or start a download.
+
+## Optional local transcript polishing
+
+In Verbatim mode, stable deltas are appended directly and the polishing worker is
+not started. In Polished mode, confirmed text is buffered through punctuation
+boundaries, processed serially by the selected local MLX-LM model, validated, and
+then appended. Stop flushes the phrase tail. Apple SpeechAnalyzer does not currently
+provide pause timing to this path, so silence-based phrase detection is not present.
+The Python worker loads its model once per process. Installation is explicit;
+ordinary inference uses local files only. `TypingCore` remains independent of
+speech and model code.
 
 Apple SpeechAnalyzer marks result ranges as volatile or final. Only final
 result text contributes to the reconciler's confirmed prefix. The current app

@@ -3,9 +3,33 @@
 <plist version="1.0">
 <dict>
 	<key>files</key>
-	<dict/>
+	<dict>
+		<key>Resources/install_local_polisher.sh</key>
+		<data>
+		wr2BITCcJYDMbs6hwYiOa+u7Ypc=
+		</data>
+		<key>Resources/mlx_worker.py</key>
+		<data>
+		shLm+RpZ2DJBGLlYxDgCksyjMQQ=
+		</data>
+	</dict>
 	<key>files2</key>
-	<dict/>
+	<dict>
+		<key>Resources/install_local_polisher.sh</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			kT2mi3ggmbW1QPZIWIqIq8zYkGE0+4xD9xpfqOvOtJ0=
+			</data>
+		</dict>
+		<key>Resources/mlx_worker.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			b+1KvF4X4w+S14VptWJLbKplFuB8e2sAu6ie8tcKT7o=
+			</data>
+		</dict>
+	</dict>
 	<key>rules</key>
 	<dict>
 		<key>^Resources/</key>

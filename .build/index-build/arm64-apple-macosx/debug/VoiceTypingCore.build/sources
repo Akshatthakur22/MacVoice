@@ -1,5 +1,7 @@
 '/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Audio/AudioCapture.swift'
 '/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Integration/VoiceTypingSession.swift'
+'/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/PolishingCoordinator.swift'
+'/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Polishing/TranscriptPolisher.swift'
 '/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Shortcut/GlobalShortcut.swift'
 '/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/AppleSpeechAnalyzerRecognizer.swift'
 '/Users/akshatthakur22/Desktop/open source/Typer/Sources/VoiceTypingCore/Speech/SpeechRecognizer.swift'
