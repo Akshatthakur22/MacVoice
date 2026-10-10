@@ -58,10 +58,12 @@ the next start.
 
 `AppleSpeechAnalyzerRecognizer.start()` only proceeds when macOS reports the
 locale's speech assets as installed. `installAssets()` is a separate explicit
-operation from the menu and may download Apple-managed model assets. Once
-installed, recognition is on-device. macOS manages and may reclaim those assets;
-the app checks availability again on each start. If assets are absent, the app
-does not silently use a network recognizer or start a download.
+operation from the menu and may download Apple-managed model assets. It checks
+the asset inventory after the download request and only reports success when
+the assets are installed; pending and unsupported states are surfaced to the
+host. Once installed, recognition is on-device. macOS manages and may reclaim
+those assets; the app checks availability again on each start. If assets are
+absent, the app does not silently use a network recognizer or start a download.
 
 ## Optional local transcript polishing
 

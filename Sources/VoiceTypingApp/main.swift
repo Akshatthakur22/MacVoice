@@ -577,6 +577,9 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         Task {
             do {
                 try await recognizer.installAssets()
+                if let session {
+                    await session.resetFailure()
+                }
                 setStatus("Speech assets installed · ready offline")
             } catch {
                 setStatus(error.localizedDescription)
