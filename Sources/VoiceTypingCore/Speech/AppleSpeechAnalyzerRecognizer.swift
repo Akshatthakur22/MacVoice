@@ -47,34 +47,33 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         }
 
         guard let request = try await AssetInventory.assetInstallationRequest(supporting: modules) else {
-            // Apple documents nil as already installed. Verify that claim rather
-            // than telling the UI setup succeeded if the status disagrees.
-            guard await AssetInventory.status(forModules: modules) == .installed else {
-                throw SpeechRecognizerError.modelUnavailable("macOS reported that no download was needed, but the speech assets for \(locale.identifier) are still unavailable. Keep this Mac online and try setup again.")
-            }
+            // Apple documents nil as already installed. The inventory can lag
+            // that response, so wait for it to confirm before reporting success.
+            try await waitForInstalledAssets(modules: modules)
             return
         }
 
         try await request.downloadAndInstall()
+        try await waitForInstalledAssets(modules: modules)
+    }
 
-        // downloadAndInstall() can return while macOS is still retrying a
-        // download. Only report success once the asset inventory confirms it.
+    /// downloadAndInstall() can return while macOS is still downloading or
+    /// reconciling the inventory. Wait for an explicit installed status.
+    private func waitForInstalledAssets(modules: [any SpeechModule]) async throws {
         for _ in 0..<60 {
             switch await AssetInventory.status(forModules: modules) {
             case .installed:
                 return
             case .unsupported:
                 throw SpeechRecognizerError.modelUnavailable("Apple does not support speech assets for locale \(locale.identifier) on this Mac.")
-            case .supported:
-                throw SpeechRecognizerError.modelUnavailable("macOS has not installed speech assets for \(locale.identifier) yet. Check your internet connection, keep this Mac online, then try setup again.")
-            case .downloading:
+            case .supported, .downloading:
                 try await Task.sleep(nanoseconds: 500_000_000)
             @unknown default:
                 throw SpeechRecognizerError.modelUnavailable("macOS returned an unrecognized speech asset status for locale \(locale.identifier). Update macOS and try again.")
             }
         }
 
-        throw SpeechRecognizerError.modelUnavailable("Speech assets for \(locale.identifier) are still downloading. Keep this Mac online and try dictation again after the download finishes.")
+        throw SpeechRecognizerError.modelUnavailable("macOS has not confirmed speech assets for \(locale.identifier) after 30 seconds. Keep this Mac online and try setup again.")
     }
 
     public func start() async throws {
@@ -85,7 +84,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         let transcriber = SpeechTranscriber(locale: try await supportedLocale(), preset: .progressiveTranscription)
         let modules: [any SpeechModule] = [transcriber]
         guard await AssetInventory.status(forModules: modules) == .installed else {
-            throw SpeechRecognizerError.modelUnavailable("Speech assets for \(locale.identifier) are not installed. Install them explicitly before going offline.")
+            throw SpeechRecognizerError.modelUnavailable("Speech assets for \(locale.identifier) are not installed. Connect to the internet and press Try Again to restore them.")
         }
         guard let outputFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: modules) else {
             throw SpeechRecognizerError.unsupportedAudioFormat

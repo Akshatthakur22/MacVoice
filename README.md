@@ -41,7 +41,7 @@ Polishing is optional. If the model is unavailable or its output fails validatio
 - Xcode Command Line Tools / Swift Package Manager to build from source.
 - Microphone access to capture speech.
 - Accessibility access for keyboard-event typing.
-- Speech assets for the selected system locale. Install them with **Install Speech Model** while online; the app does not download them automatically when dictation starts.
+- Speech assets for the selected system locale. Install them with **Install Speech Model** while online. macOS may reclaim them; pressing **Try Again** after a failed dictation checks and restores missing assets before retrying.
 
 ### Disk space
 

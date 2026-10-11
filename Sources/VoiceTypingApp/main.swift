@@ -526,11 +526,13 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         guard let session else { return }
         Task {
             var currentState = await session.state
+            var retryingFailedSession = false
             if currentState == .listening || currentState == .starting {
                 await session.stop()
                 return
             }
             if case .failed = currentState {
+                retryingFailedSession = true
                 await session.resetFailure()
                 currentState = await session.state
             }
@@ -540,6 +542,13 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             do {
+                // macOS can reclaim its speech assets between launches. A user
+                // pressing Try Again explicitly authorizes setup to restore
+                // them before we start another dictation attempt.
+                if retryingFailedSession, let recognizer {
+                    setStatus("Checking on-device speech assets…")
+                    try await recognizer.installAssets()
+                }
                 try await session.start()
             } catch {
                 setStatus(error.localizedDescription)
@@ -684,7 +693,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         self.recognizer = recognizer
         self.session = session
         updatePolisherStatus()
-        Task {
+        Task { [weak self] in
             await session.setStateChangeHandler { [weak self] state in
                 Task { @MainActor in self?.render(state) }
             }

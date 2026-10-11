@@ -64,6 +64,8 @@ the assets are installed; pending and unsupported states are surfaced to the
 host. Once installed, recognition is on-device. macOS manages and may reclaim
 those assets; the app checks availability again on each start. If assets are
 absent, the app does not silently use a network recognizer or start a download.
+When a user presses **Try Again** after a failed dictation, that explicit action
+checks the asset inventory and restores missing speech assets before retrying.
 
 ## Optional local transcript polishing
 
