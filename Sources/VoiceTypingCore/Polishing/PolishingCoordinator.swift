@@ -4,7 +4,7 @@ import TypingCore
 /// Serializes phrase cleanup and TypingCore commits. Recognition can continue
 /// while one phrase is being polished; phrases are committed in source order.
 public actor PolishingCoordinator {
-    private let engine: TypingEngine
+    private let engine: any TypingOutput
     private let polisher: any TranscriptPolisher
     private let mode: PolishingMode
     private var buffer = PhraseBuffer()
@@ -17,7 +17,7 @@ public actor PolishingCoordinator {
     public var onTypingFailure: ((Error) -> Void)?
     public var onQueuePressure: (() -> Void)?
 
-    public init(engine: TypingEngine, polisher: any TranscriptPolisher, mode: PolishingMode) {
+    public init(engine: any TypingOutput, polisher: any TranscriptPolisher, mode: PolishingMode) {
         self.engine = engine
         self.polisher = polisher
         self.mode = mode
@@ -31,9 +31,9 @@ public actor PolishingCoordinator {
     public func consume(_ delta: String) {
         guard !delta.isEmpty else { return }
         if mode == .verbatim {
-            engine.append(delta) { [weak self] result in
+            engine.append(delta, completion: { [weak self] result in
                 if case .failure(let error) = result { Task { await self?.onTypingFailure?(error) } }
-            }
+            })
             return
         }
         enqueue(buffer.append(delta))
@@ -75,9 +75,9 @@ public actor PolishingCoordinator {
         }
         guard ticket == generation else { processing = false; processNextIfNeeded(); return }
         if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { output = phrase }
-        engine.append(output) { [weak self] result in
+        engine.append(output, completion: { [weak self] result in
             if case .failure(let error) = result { Task { await self?.onTypingFailure?(error) } }
-        }
+        })
         processing = false
         processNextIfNeeded()
     }

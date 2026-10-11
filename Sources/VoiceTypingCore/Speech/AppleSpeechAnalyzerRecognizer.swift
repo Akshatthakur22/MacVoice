@@ -60,7 +60,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     /// downloadAndInstall() can return while macOS is still downloading or
     /// reconciling the inventory. Wait for an explicit installed status.
     private func waitForInstalledAssets(modules: [any SpeechModule]) async throws {
-        for _ in 0..<60 {
+        for _ in 0..<240 {
             switch await AssetInventory.status(forModules: modules) {
             case .installed:
                 return
@@ -73,22 +73,26 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             }
         }
 
-        throw SpeechRecognizerError.modelUnavailable("macOS has not confirmed speech assets for \(locale.identifier) after 30 seconds. Keep this Mac online and try setup again.")
+        throw SpeechRecognizerError.modelUnavailable("macOS has not confirmed speech assets for \(locale.identifier) after 2 minutes. Check the internet connection and try dictation again.")
     }
 
     public func start() async throws {
+        try Task.checkCancellation()
         guard !running else { throw SpeechRecognizerError.modelLoadFailed("Recognizer is already running.") }
         guard SpeechTranscriber.isAvailable else {
             throw SpeechRecognizerError.modelUnavailable("SpeechTranscriber is unavailable on this Mac.")
         }
         let transcriber = SpeechTranscriber(locale: try await supportedLocale(), preset: .progressiveTranscription)
+        try Task.checkCancellation()
         let modules: [any SpeechModule] = [transcriber]
         guard await AssetInventory.status(forModules: modules) == .installed else {
             throw SpeechRecognizerError.modelUnavailable("Speech assets for \(locale.identifier) are not installed. Connect to the internet and press Try Again to restore them.")
         }
+        try Task.checkCancellation()
         guard let outputFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: modules) else {
             throw SpeechRecognizerError.unsupportedAudioFormat
         }
+        try Task.checkCancellation()
 
         let (inputStream, continuation) = AsyncStream<AnalyzerInput>.makeStream(
             bufferingPolicy: .bufferingOldest(32)
@@ -113,17 +117,23 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
 
         do {
             try await analyzer.start(inputSequence: inputStream)
+            try Task.checkCancellation()
         } catch {
             running = false
             continuation.finish()
             resultTask?.cancel()
+            await resultTask?.value
             resultTask = nil
+            inputContinuation = nil
             self.analyzer = nil
+            self.outputFormat = nil
+            if error is CancellationError { throw error }
             throw SpeechRecognizerError.modelLoadFailed(error.localizedDescription)
         }
     }
 
     public func consume(_ frame: PCMFrame) async throws {
+        try Task.checkCancellation()
         guard running, let continuation = inputContinuation, let outputFormat else {
             throw SpeechRecognizerError.stopped
         }
@@ -177,6 +187,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         }
         guard converted.frameLength > 0 else { return }
 
+        try Task.checkCancellation()
         let startTime = CMTime(value: outputSampleOffset, timescale: CMTimeScale(outputFormat.sampleRate))
         outputSampleOffset += Int64(converted.frameLength)
         guard case .dropped = continuation.yield(AnalyzerInput(buffer: converted, bufferStartTime: startTime)) else {

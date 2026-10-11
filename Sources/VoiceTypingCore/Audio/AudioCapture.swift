@@ -54,7 +54,14 @@ public enum AudioCaptureError: Error, LocalizedError {
 /// The host should call `requestPermission()` from its permission flow and set
 /// `onFrame` before calling `start()`. `onFrame` is invoked on the audio delivery
 /// thread; it must return quickly and must not perform model inference inline.
-public final class AudioCapture {
+public protocol AudioCapturing: AnyObject {
+    var onFrame: ((PCMFrame) -> Void)? { get set }
+    var onError: ((AudioCaptureError) -> Void)? { get set }
+    func start() throws
+    func stop()
+}
+
+public final class AudioCapture: AudioCapturing {
     public var onFrame: ((PCMFrame) -> Void)?
     public var onError: ((AudioCaptureError) -> Void)?
 

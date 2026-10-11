@@ -15,9 +15,14 @@ public struct SpeechRecognitionUpdate: Sendable, Equatable {
     }
 }
 
-/// Replaceable local or remote recognition backend contract. A local backend
-/// should keep audio processing on-device and report only confirmed text in
-/// `confirmedTranscript`; the app may display `hypothesis` as ephemeral status.
+/// Replaceable local or remote recognition backend contract. `start()` and
+/// `consume(_:)` must cooperate with task cancellation and return promptly when
+/// cancelled. The session cancels and joins active calls before invoking `stop()`;
+/// implementations must not require concurrent `stop()` to release a cancelled
+/// call. `stop()` may finalize results, but must itself eventually return.
+/// A local backend should keep audio processing on-device and report only
+/// confirmed text in `confirmedTranscript`; the app may display `hypothesis`
+/// as ephemeral status.
 public protocol SpeechRecognizer: AnyObject {
     var onUpdate: ((SpeechRecognitionUpdate) -> Void)? { get set }
     var onError: ((Error) -> Void)? { get set }

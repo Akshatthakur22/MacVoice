@@ -23,6 +23,15 @@ public struct TypingReport {
     public let timeToFirstEvent: TimeInterval?
 }
 
+/// Append-only output boundary used by VoiceTypingSession. `drain()` waits until
+/// previously submitted Quartz work has completed; it does not confirm that a
+/// destination application inserted the posted events.
+public protocol TypingOutput: AnyObject {
+    func append(_ text: String, completion: ((Result<TypingReport, TypingError>) -> Void)?)
+    func stop()
+    func drain() async
+}
+
 private enum TypingControl: Error { case cancelled }
 
 /// Progressively sends text to the currently focused macOS application.
@@ -30,7 +39,7 @@ private enum TypingControl: Error { case cancelled }
 /// Calls are serialized on a private queue, so callers can submit speech results
 /// without blocking a UI or recognition thread. `append` means append-only text;
 /// it does not revise text already delivered to the destination.
-public final class TypingEngine {
+public final class TypingEngine: TypingOutput {
     /// Gives apps time to process text on either side of a Shift+Return boundary.
     private let shiftEnterSettleDelay: TimeInterval = 0.025
     private let queue = DispatchQueue(label: "TypingCore.events", qos: .userInitiated)
@@ -66,6 +75,14 @@ public final class TypingEngine {
         lock.lock()
         generation &+= 1
         lock.unlock()
+    }
+
+    /// Waits for all event batches submitted before this call to finish.
+    /// Completion means Quartz processing returned, not that a target app inserted text.
+    public func drain() async {
+        await withCheckedContinuation { continuation in
+            queue.async { continuation.resume() }
+        }
     }
 
     private func enqueue(_ text: String, completion: ((Result<TypingReport, TypingError>) -> Void)?) {

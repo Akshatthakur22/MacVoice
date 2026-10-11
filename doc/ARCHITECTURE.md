@@ -57,8 +57,11 @@ the next start.
 ## Apple Speech asset lifecycle
 
 `AppleSpeechAnalyzerRecognizer.start()` only proceeds when macOS reports the
-locale's speech assets as installed. `installAssets()` is a separate explicit
-operation from the menu and may download Apple-managed model assets. It checks
+locale's speech assets as installed. Before each dictation, the host checks
+`SpeechTranscriber.supportedLocales` and `installedLocales`, chooses a locale
+matching the system language (preferring an installed regional model), and
+automatically calls `installAssets()` when needed. This may download
+Apple-managed model assets. It checks
 the asset inventory after the download request and only reports success when
 the assets are installed; pending and unsupported states are surfaced to the
 host. Once installed, recognition is on-device. macOS manages and may reclaim
@@ -79,9 +82,11 @@ ordinary inference uses local files only. `TypingCore` remains independent of
 speech and model code.
 
 Apple SpeechAnalyzer marks result ranges as volatile or final. Only final
-result text contributes to the reconciler's confirmed prefix. The current app
-uses the host's current locale and reports unsupported locales rather than
-guessing. There is no model fallback yet.
+result text contributes to the reconciler's confirmed prefix. The app chooses
+a supported locale matching the system language automatically, preferring an
+already installed variant. It does not switch to a different language if no
+matching locale is available. There is no alternate recognition provider
+fallback yet.
 
 ## Boundaries and current gaps
 

@@ -29,7 +29,7 @@ TextEdit on macOS 26.6.2 / Apple Silicon. The user installed the system speech
 assets, granted microphone access, started/stopped with Control+Option+Space,
 and confirmed text was typed. This confirms one end-to-end path; other apps,
 languages, punctuation, long sessions, and accuracy are not validated. The host
-uses the current system locale and checks support at runtime; Hindi/Hinglish are
+automatically selects a locale matching the system language; Hindi/Hinglish are
 not marked verified.
 
 ## Reproducible manual harness

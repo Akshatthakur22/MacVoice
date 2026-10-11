@@ -14,7 +14,7 @@ MacVoice is a local-first voice-typing utility for macOS. Focus a text field, st
 
 1. Focus the destination text field.
 2. Press the configured global shortcut (default **Control + Option + Space**) or click **Start Dictation**.
-3. MacVoice captures audio in memory and uses Apple's Speech framework to recognize speech for the current system locale.
+3. MacVoice captures audio in memory and automatically prepares Apple's on-device speech model for your system language. It prefers an already installed compatible locale; first-time setup may download assets when you start dictation.
 4. The app ignores provisional speech hypotheses and passes confirmed text onward.
 5. **Verbatim** sends that text directly to TypingCore. **Polished** buffers phrases and runs them through an optional local language model.
 6. TypingCore posts Quartz keyboard events to the currently focused app. It does not use the clipboard as its normal insertion path.
@@ -41,7 +41,7 @@ Polishing is optional. If the model is unavailable or its output fails validatio
 - Xcode Command Line Tools / Swift Package Manager to build from source.
 - Microphone access to capture speech.
 - Accessibility access for keyboard-event typing.
-- Speech assets for the selected system locale. Install them with **Install Speech Model** while online. macOS may reclaim them; pressing **Try Again** after a failed dictation checks and restores missing assets before retrying.
+- Speech assets for a locale matching your system language. MacVoice checks and installs these automatically when dictation starts; keep the Mac online for first-time setup. macOS may reclaim assets, and MacVoice restores them automatically on a later start.
 
 ### Disk space
 
@@ -81,7 +81,7 @@ These statements describe this repository's current design and should be recheck
 ## Compatibility and known limits
 
 - The receiving app and field determine whether posted Unicode and newline events are accepted. Secure fields, custom editors, IMEs, remote desktops, and chat composers may behave differently.
-- The app uses the current system locale and reports unsupported locales. Hindi, Hinglish, and other languages are not verified by this project.
+- The app automatically chooses a supported locale matching the system language, preferring an already installed regional model. Hindi, Hinglish, and other languages are not verified by this project.
 - Speech recognition quality, punctuation, and technical vocabulary have not been evaluated across a representative test corpus.
 - The shortcut is configurable and registered by Carbon. Shortcut conflicts are rejected while the prior binding is restored. Global shortcut registration and Accessibility keyboard-event posting are distinct macOS capabilities.
 - The current user-facing experience has had manual reports of repeated or garbled text. The cause and cross-app behavior remain under investigation.

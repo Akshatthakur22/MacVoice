@@ -28,9 +28,14 @@ public actor VoiceTypingSession {
     public var onStateChange: ((VoiceTypingState) -> Void)?
     public var onWarning: ((String) -> Void)?
 
-    private let audioCapture: AudioCapture
+    private enum CleanupResult {
+        case stopped
+        case failed(String)
+    }
+
+    private let audioCapture: any AudioCapturing
     private let recognizer: any SpeechRecognizer
-    private let typingEngine: TypingEngine
+    private let typingOutput: any TypingOutput
     private let polishingMode: PolishingMode
     private let polishingCoordinator: PolishingCoordinator
     private var reconciler = TranscriptReconciler()
@@ -38,14 +43,18 @@ public actor VoiceTypingSession {
     private var updateContinuation: AsyncStream<SpeechRecognitionUpdate>.Continuation?
     private var audioTask: Task<Void, Never>?
     private var updateTask: Task<Void, Never>?
+    private var recognizerStartTask: Task<Void, Error>?
+    private var cleanupTask: Task<Void, Never>?
+    private var cleanupGeneration: UInt64 = 0
+    private var cleanupResult: CleanupResult?
     private var generation: UInt64 = 0
 
-    public init(audioCapture: AudioCapture, recognizer: any SpeechRecognizer, typingEngine: TypingEngine,
+    public init(audioCapture: any AudioCapturing, recognizer: any SpeechRecognizer, typingEngine: any TypingOutput,
                 polisher: any TranscriptPolisher = PassthroughTranscriptPolisher(),
                 polishingMode: PolishingMode = .verbatim) {
         self.audioCapture = audioCapture
         self.recognizer = recognizer
-        self.typingEngine = typingEngine
+        self.typingOutput = typingEngine
         self.polishingMode = polishingMode
         self.polishingCoordinator = PolishingCoordinator(engine: typingEngine, polisher: polisher, mode: polishingMode)
     }
@@ -56,10 +65,10 @@ public actor VoiceTypingSession {
 
     public func setWarningHandler(_ handler: ((String) -> Void)?) { onWarning = handler }
 
-    /// Loads/starts recognition first, then starts microphone capture. The host
-    /// must request microphone permission before calling this method.
+    /// Starts recognition before capture. The host must request microphone
+    /// permission first. Concurrent stop cancels and joins recognizer startup.
     public func start() async throws {
-        guard state == .idle else {
+        guard state == .idle, cleanupTask == nil else {
             throw VoiceTypingSessionError.invalidState(state)
         }
         generation &+= 1
@@ -72,13 +81,10 @@ public actor VoiceTypingSession {
                 Task { await self?.reportWarning(error.localizedDescription) }
             }
             await polishingCoordinator.setTypingFailureHandler { [weak self] error in
-                // TypingEngine posts events asynchronously. A typing error can
-                // arrive after stop() has already returned the session to Idle;
-                // always surface it through the host's warning channel too.
-                Task { await self?.reportTypingFailure(error) }
+                Task { await self?.fail(error, sessionGeneration: ticket) }
             }
             await polishingCoordinator.setQueuePressureHandler { [weak self] in
-                Task { await self?.fail(VoiceTypingSessionError.audioBufferOverrun) }
+                Task { await self?.fail(VoiceTypingSessionError.audioBufferOverrun, sessionGeneration: ticket) }
             }
         }
 
@@ -97,79 +103,72 @@ public actor VoiceTypingSession {
                 do {
                     try await self.consume(frame)
                 } catch {
-                    await self.fail(error)
+                    // Cleanup runs in another task so it can cancel/join this consumer.
+                    Task { await self.fail(error, sessionGeneration: ticket) }
                     return
                 }
             }
         }
         updateTask = Task { [weak self] in
             for await update in updateStream {
-                await self?.receive(update)
+                await self?.receive(update, sessionGeneration: ticket)
             }
         }
 
         recognizer.onUpdate = { updateStreamContinuation.yield($0) }
         recognizer.onError = { [weak self] error in
-            Task { await self?.fail(error) }
+            Task { await self?.fail(error, sessionGeneration: ticket) }
         }
         audioCapture.onError = { [weak self] error in
-            Task { await self?.fail(error) }
+            Task { await self?.fail(error, sessionGeneration: ticket) }
         }
         audioCapture.onFrame = { [weak self] frame in
             guard case .dropped = audioStreamContinuation.yield(frame) else { return }
-            Task { await self?.fail(VoiceTypingSessionError.audioBufferOverrun) }
+            Task { await self?.fail(VoiceTypingSessionError.audioBufferOverrun, sessionGeneration: ticket) }
         }
 
+        let startup = Task { try await recognizer.start() }
+        recognizerStartTask = startup
         do {
-            try await recognizer.start()
-            guard generation == ticket, state == .starting else {
-                await recognizer.stop()
-                return
-            }
+            try await startup.value
+            if generation == ticket { recognizerStartTask = nil }
+            guard generation == ticket, state == .starting, cleanupTask == nil else { return }
             try audioCapture.start()
-            guard generation == ticket, state == .starting else {
+            guard generation == ticket, state == .starting, cleanupTask == nil else {
                 audioCapture.stop()
-                await recognizer.stop()
                 return
             }
             setState(.listening)
         } catch {
-            audioCapture.stop()
-            audioStreamContinuation.finish()
-            await recognizer.stop()
-            updateStreamContinuation.finish()
-            await audioTask?.value
-            await updateTask?.value
-            clearStreams()
-            if generation == ticket { setState(.failed(error.localizedDescription)) }
+            if generation == ticket { recognizerStartTask = nil }
+            if cleanupTask == nil {
+                await fail(error, sessionGeneration: ticket)
+            } else {
+                await waitForCleanup()
+            }
             throw error
         }
     }
 
-    /// Stops capture, drains already delivered frames, lets the recognizer emit
-    /// its final update, then drains transcript updates. Existing TypingCore
-    /// output is allowed to finish; this does not retract posted events.
+    /// Stops capture and drains delivered audio, final recognition updates,
+    /// Polished work, and queued typing events before returning to Idle.
     public func stop() async {
-        guard state == .listening || state == .starting || isFailed else { return }
-        generation &+= 1
-        setState(.stopping)
-        audioCapture.stop()
-        audioContinuation?.finish()
-        await audioTask?.value
-        await recognizer.stop()
-        updateContinuation?.finish()
-        await updateTask?.value
-        if polishingMode == .polished { await polishingCoordinator.finish() }
-        clearStreams()
-        reconciler.reset()
-        if !isFailed { setState(.idle) }
+        if cleanupTask != nil {
+            await waitForCleanup()
+            return
+        }
+        guard state == .listening || state == .starting else { return }
+        let (task, cleanupID) = beginCleanup(result: .stopped)
+        await task.value
+        finishCleanup(cleanupID)
     }
 
-    /// Drains any failed session and returns it to Idle so the host can retry.
+    /// Joins any active cleanup before resetting a failed session to Idle.
     public func resetFailure() async {
-        guard isFailed else { return }
-        await stop()
-        if isFailed { setState(.idle) }
+        if cleanupTask != nil { await waitForCleanup() }
+        guard isFailed, cleanupTask == nil else { return }
+        reconciler.reset()
+        setState(.idle)
     }
 
     private var isFailed: Bool {
@@ -181,34 +180,99 @@ public actor VoiceTypingSession {
         try await recognizer.consume(frame)
     }
 
-    private func receive(_ update: SpeechRecognitionUpdate) async {
+    private func receive(_ update: SpeechRecognitionUpdate, sessionGeneration: UInt64) async {
+        guard generation == sessionGeneration else { return }
         do {
             let stableDelta = try reconciler.consume(update)
             guard !stableDelta.isEmpty else { return }
             if polishingMode == .verbatim {
-                // Preserve the pre-polishing pipeline exactly: stable text goes
-                // straight to TypingCore without passing through a coordinator.
-                typingEngine.append(stableDelta) { [weak self] result in
+                typingOutput.append(stableDelta, completion: { [weak self] result in
                     guard case .failure(let error) = result else { return }
-                    Task { await self?.fail(error) }
-                }
+                    Task { await self?.fail(error, sessionGeneration: sessionGeneration) }
+                })
             } else {
                 await polishingCoordinator.consume(stableDelta)
             }
         } catch {
-            Task { await fail(error) }
+            Task { await fail(error, sessionGeneration: sessionGeneration) }
         }
     }
 
-    private func fail(_ error: Error) async {
-        guard state != .failed(error.localizedDescription), state != .idle else { return }
-        setState(.failed(error.localizedDescription))
+    private func fail(_ error: Error, sessionGeneration: UInt64) async {
+        guard generation == sessionGeneration,
+              cleanupTask == nil,
+              state != .idle,
+              state != .stopping,
+              !isFailed else { return }
+        let (task, cleanupID) = beginCleanup(result: .failed(error.localizedDescription))
+        await task.value
+        finishCleanup(cleanupID)
+    }
+
+    /// Installs exactly one teardown task before suspending the actor. All
+    /// stop/reset/failure callers join that task instead of repeating cleanup.
+    private func beginCleanup(result: CleanupResult) -> (Task<Void, Never>, UInt64) {
+        if let cleanupTask { return (cleanupTask, cleanupGeneration) }
+        cleanupGeneration &+= 1
+        let cleanupID = cleanupGeneration
+        cleanupResult = result
+        switch result {
+        case .stopped: setState(.stopping)
+        case .failed(let message): setState(.failed(message))
+        }
+
         audioCapture.stop()
         audioContinuation?.finish()
-        await recognizer.stop()
-        updateContinuation?.finish()
-        await updateTask?.value
-        if polishingMode == .polished { await polishingCoordinator.finish() }
+        let startup = recognizerStartTask
+        let audio = audioTask
+        let updates = updateTask
+        let updateStream = updateContinuation
+        let recognizer = self.recognizer
+        let coordinator = polishingCoordinator
+        let typingOutput = self.typingOutput
+        let shouldFinishPolishing = polishingMode == .polished
+        let shouldCancelAudio: Bool
+        switch result {
+        case .stopped: shouldCancelAudio = false
+        case .failed: shouldCancelAudio = true
+        }
+
+        let task = Task {
+            startup?.cancel()
+            if shouldCancelAudio { audio?.cancel() }
+            if let startup { _ = try? await startup.value }
+            await audio?.value
+            await recognizer.stop()
+            updateStream?.finish()
+            await updates?.value
+            if shouldFinishPolishing { await coordinator.finish() }
+            if shouldCancelAudio { typingOutput.stop() }
+            await typingOutput.drain()
+        }
+        cleanupTask = task
+        return (task, cleanupID)
+    }
+
+    private func waitForCleanup() async {
+        guard let task = cleanupTask else { return }
+        let cleanupID = cleanupGeneration
+        await task.value
+        finishCleanup(cleanupID)
+    }
+
+    private func finishCleanup(_ cleanupID: UInt64) {
+        guard cleanupGeneration == cleanupID, cleanupTask != nil else { return }
+        let result = cleanupResult
+        cleanupTask = nil
+        cleanupResult = nil
+        recognizerStartTask = nil
+        clearStreams()
+        reconciler.reset()
+        switch result {
+        case .stopped: setState(.idle)
+        case .failed(let message): setState(.failed(message))
+        case nil: break
+        }
     }
 
     private func clearStreams() {
@@ -228,9 +292,4 @@ public actor VoiceTypingSession {
     }
 
     private func reportWarning(_ message: String) { onWarning?(message) }
-
-    private func reportTypingFailure(_ error: Error) async {
-        reportWarning("Typing failed: \(error.localizedDescription)")
-        if state != .idle { await fail(error) }
-    }
 }

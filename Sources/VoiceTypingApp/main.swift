@@ -1,6 +1,7 @@
 import AppKit
 import Carbon
 import CoreGraphics
+import Speech
 import TypingCore
 import VoiceTypingCore
 
@@ -56,6 +57,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var shortcut: GlobalShortcut?
     private var session: VoiceTypingSession?
+    private let sessionStartCoordinator = SessionStartCoordinator()
     private var recognizer: AppleSpeechAnalyzerRecognizer?
     private var polisher: LocalMLXTranscriptPolisher?
     private var statusLine: NSMenuItem!
@@ -82,7 +84,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         }
         buildMenu()
         buildControlWindow()
-        let locale = Locale.current
         configureSession()
 
         let shortcutKeyCode = (savedShortcut?["keyCode"] as? NSNumber)?.uint32Value ?? GlobalShortcut.defaultKeyCode
@@ -97,7 +98,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         do {
             try shortcut.start(onPress: onShortcut)
             self.shortcut = shortcut
-            setStatus("Idle · \(locale.identifier) · shortcut ready")
+            setStatus("Idle · \(Locale.current.identifier) · shortcut ready")
         } catch {
             guard savedShortcut != nil else {
                 setStatus("Shortcut unavailable: \(error.localizedDescription)")
@@ -135,7 +136,12 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         shortcut?.stop()
-        if let session { Task { await session.stop() } }
+        let currentSession = session
+        let startCoordinator = sessionStartCoordinator
+        Task { @MainActor in
+            await startCoordinator.cancelAndWait()
+            await currentSession?.stop()
+        }
         if let polisher { Task { await polisher.stop() } }
     }
 
@@ -166,10 +172,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let permission = NSMenuItem(title: "Microphone Access…", action: #selector(requestMicrophoneAccess), keyEquivalent: "")
         permission.target = self
         menu.addItem(permission)
-
-        let install = NSMenuItem(title: "Install Speech Model for Current Language…", action: #selector(installSpeechAssets), keyEquivalent: "")
-        install.target = self
-        menu.addItem(install)
 
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
@@ -286,18 +288,17 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
         let permissionsTitle = NSTextField(labelWithString: "Access and setup")
         permissionsTitle.font = .systemFont(ofSize: 13, weight: .semibold)
-        let accessHelp = NSTextField(wrappingLabelWithString: "Microphone access lets MacVoice hear you. Accessibility allows keyboard events to reach the active app. Speech assets are managed by macOS and may need an explicit download for your language.")
+        let accessHelp = NSTextField(wrappingLabelWithString: "Microphone access lets MacVoice hear you. Accessibility allows keyboard events to reach the active app. MacVoice automatically checks and installs supported speech assets when you start dictation; the first setup may take a few minutes and requires an internet connection.")
         accessHelp.font = .systemFont(ofSize: 12)
         accessHelp.textColor = .secondaryLabelColor
         accessHelp.maximumNumberOfLines = 4
         let microphone = NSButton(title: "Microphone Access…", target: self, action: #selector(requestMicrophoneAccess))
         let typingAccess = NSButton(title: "Accessibility Settings…", target: self, action: #selector(requestTypingAccess))
-        let installSpeech = NSButton(title: "Set Up Offline Speech…", target: self, action: #selector(installSpeechAssets))
-        let settingsPage = makePage([appearanceLabel, appearancePicker, permissionsTitle, accessHelp, microphone, typingAccess, installSpeech])
+        let settingsPage = makePage([appearanceLabel, appearancePicker, permissionsTitle, accessHelp, microphone, typingAccess])
 
         let aboutTitle = NSTextField(labelWithString: "Speak. Type. Done.")
         aboutTitle.font = .systemFont(ofSize: 17, weight: .semibold)
-        let aboutText = NSTextField(wrappingLabelWithString: "MacVoice is a local-first voice typing utility. Audio is held in memory during dictation. Verbatim sends confirmed recognition directly to TypingCore. Polished uses an optional local cleanup model. MacVoice does not keep a transcript history.\n\nRequires macOS 26 or later. Speech recognition uses your system locale; language accuracy and destination-app compatibility vary and are not guaranteed.")
+        let aboutText = NSTextField(wrappingLabelWithString: "MacVoice is a local-first voice typing utility. Audio is held in memory during dictation. Verbatim sends confirmed recognition directly to TypingCore. Polished uses an optional local cleanup model. MacVoice does not keep a transcript history.\n\nRequires macOS 26 or later. Speech recognition automatically uses a supported locale for your system language; language accuracy and destination-app compatibility vary and are not guaranteed.")
         aboutText.font = .systemFont(ofSize: 13)
         aboutText.textColor = .secondaryLabelColor
         aboutText.maximumNumberOfLines = 12
@@ -524,36 +525,100 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     private func toggleListening() {
         guard let session else { return }
-        Task {
-            var currentState = await session.state
-            var retryingFailedSession = false
-            if currentState == .listening || currentState == .starting {
-                await session.stop()
-                return
-            }
-            if case .failed = currentState {
-                retryingFailedSession = true
-                await session.resetFailure()
-                currentState = await session.state
-            }
-            guard currentState == .idle else { return }
-            guard await AudioCapture.requestPermission() else {
-                setStatus("Microphone access denied")
-                return
-            }
+        sessionStartCoordinator.begin(operation: { [weak self] in
+            guard let self else { return }
+            try await self.performToggle(session)
+        }, onFailure: { [weak self] error in
+            self?.setStatus(error.localizedDescription)
+        })
+    }
+
+    private func performToggle(_ session: VoiceTypingSession) async throws {
+        try Task.checkCancellation()
+        var currentState = await session.state
+        try Task.checkCancellation()
+        if currentState == .listening || currentState == .starting {
+            await session.stop()
+            return
+        }
+        if case .failed = currentState {
+            await session.resetFailure()
+            currentState = await session.state
+        }
+        guard currentState == .idle else { return }
+        let hasMicrophonePermission = await AudioCapture.requestPermission()
+        try Task.checkCancellation()
+        guard hasMicrophonePermission else {
+            setStatus("Microphone access denied")
+            return
+        }
+        setStatus("Preparing on-device speech for \(Locale.current.identifier)…")
+        try await prepareSpeechAssetsAndSession()
+        try Task.checkCancellation()
+        guard let activeSession = self.session else { return }
+        try await activeSession.start()
+    }
+
+    /// Finds and prepares an Apple-supported locale for the Mac's language.
+    /// Already-installed same-language assets win, avoiding an unnecessary
+    /// download when a compatible regional model is already on the device.
+    private func prepareSpeechAssetsAndSession() async throws {
+        try Task.checkCancellation()
+        let systemLocale = Locale.current
+        let systemLanguage = systemLocale.language.languageCode?.identifier
+        let supported = await SpeechTranscriber.supportedLocales
+        try Task.checkCancellation()
+        let sameLanguage = supported.filter {
+            $0.language.languageCode?.identifier == systemLanguage
+        }
+        guard !sameLanguage.isEmpty else {
+            throw SpeechRecognizerError.modelUnavailable(
+                "macOS has no downloadable on-device speech model for your system language (\(systemLocale.identifier))."
+            )
+        }
+
+        let installedLocales = await SpeechTranscriber.installedLocales
+        try Task.checkCancellation()
+        let installedIDs = Set(installedLocales.map { Self.normalizedLocaleID($0.identifier) })
+        let installedSameLanguage = sameLanguage.filter { installedIDs.contains(Self.normalizedLocaleID($0.identifier)) }.sorted {
+            let leftExact = Self.normalizedLocaleID($0.identifier) == Self.normalizedLocaleID(systemLocale.identifier)
+            let rightExact = Self.normalizedLocaleID($1.identifier) == Self.normalizedLocaleID(systemLocale.identifier)
+            if leftExact != rightExact { return leftExact }
+            return $0.identifier.localizedCaseInsensitiveCompare($1.identifier) == .orderedAscending
+        }
+        let exact = sameLanguage.first { Self.normalizedLocaleID($0.identifier) == Self.normalizedLocaleID(systemLocale.identifier) }
+        let fallback = sameLanguage.first {
+            Self.normalizedLocaleID($0.identifier) != Self.normalizedLocaleID(systemLocale.identifier)
+                && (systemLanguage != "en" || Self.normalizedLocaleID($0.identifier) == "en_us")
+        } ?? sameLanguage.first { Self.normalizedLocaleID($0.identifier) != Self.normalizedLocaleID(systemLocale.identifier) }
+        let candidates = installedSameLanguage.isEmpty
+            ? [exact, fallback].compactMap { $0 }
+            : Array(installedSameLanguage.prefix(1))
+
+        var lastError: Error?
+        for locale in candidates {
+            try Task.checkCancellation()
+            setStatus("Preparing on-device speech · \(locale.identifier)…")
+            let candidateRecognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
             do {
-                // macOS can reclaim its speech assets between launches. A user
-                // pressing Try Again explicitly authorizes setup to restore
-                // them before we start another dictation attempt.
-                if retryingFailedSession, let recognizer {
-                    setStatus("Checking on-device speech assets…")
-                    try await recognizer.installAssets()
-                }
-                try await session.start()
+                try await candidateRecognizer.installAssets()
+                try Task.checkCancellation()
+                configureSession(locale: locale)
+                return
             } catch {
-                setStatus(error.localizedDescription)
+                if error is CancellationError || Task.isCancelled { throw CancellationError() }
+                lastError = error
             }
         }
+
+        let detail = lastError?.localizedDescription ?? "macOS did not install the speech assets."
+        throw SpeechRecognizerError.modelUnavailable(
+            "Automatic speech setup failed for \(candidates.map(\.identifier).joined(separator: ", ")). \(detail)"
+        )
+    }
+
+    private static func normalizedLocaleID(_ identifier: String) -> String {
+        identifier.replacingOccurrences(of: "-", with: "_").lowercased()
     }
 
     @objc private func requestMicrophoneAccess() {
@@ -577,22 +642,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         setStatus("Enable MacVoice under Privacy & Security → Accessibility, then reopen the app")
         if let settingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(settingsURL)
-        }
-    }
-
-    @objc private func installSpeechAssets() {
-        guard let recognizer else { return }
-        setStatus("Installing on-device speech assets…")
-        Task {
-            do {
-                try await recognizer.installAssets()
-                if let session {
-                    await session.resetFailure()
-                }
-                setStatus("Speech assets installed · ready offline")
-            } catch {
-                setStatus(error.localizedDescription)
-            }
         }
     }
 
@@ -678,8 +727,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func configureSession() {
-        let locale = Locale.current
+    private func configureSession(locale: Locale = Locale.current) {
         let recognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
         let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .newline)
         let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? "verbatim") ?? .verbatim
