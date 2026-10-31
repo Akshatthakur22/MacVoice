@@ -92,6 +92,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         registerSleepWakeNotifications()
         Task { @MainActor in
             await self.configureSession()
+            // Proactively warm up and verify speech assets in background so dictation is instant
+            try? await self.prepareSpeechAssetsAndSession()
         }
 
         let shortcutKeyCode = (savedShortcut?["keyCode"] as? NSNumber)?.uint32Value ?? GlobalShortcut.defaultKeyCode
@@ -183,6 +185,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func systemDidWake(_ notification: Notification) {
         Task { @MainActor in
+            // Re-arm session cleanly on system wake to refresh any stale XPC daemon connections.
+            await self.configureSession(locale: self.currentConfiguredLocale ?? Locale.current)
             self.setStatus("Idle · \(Locale.current.identifier) · shortcut ready")
         }
     }
@@ -600,26 +604,30 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleListening() {
-        guard let session = self.session else { return }
         sessionStartCoordinator.begin(operation: { [weak self] in
             guard let self else { return }
-            try await self.performToggle(self.session ?? session)
+            try await self.performToggle()
         }, onFailure: { [weak self] error in
             self?.setStatus(error.localizedDescription)
         })
     }
 
-    private func performToggle(_ session: VoiceTypingSession) async throws {
+    private func performToggle() async throws {
         try Task.checkCancellation()
-        var currentState = await session.state
-        try Task.checkCancellation()
-        if currentState == .listening || currentState == .starting {
-            await session.stop()
-            return
-        }
-        if case .failed = currentState {
-            await session.resetFailure()
-            currentState = await session.state
+        var currentState: VoiceTypingState = .idle
+        var wasFailed = false
+        if let currentSession = self.session {
+            currentState = await currentSession.state
+            try Task.checkCancellation()
+            if currentState == .listening || currentState == .starting {
+                await currentSession.stop()
+                return
+            }
+            if case .failed = currentState {
+                await currentSession.resetFailure()
+                wasFailed = true
+                currentState = .idle
+            }
         }
         guard currentState == .idle else { return }
         let hasMicrophonePermission = await AudioCapture.requestPermission()
@@ -637,13 +645,25 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             setStatus("Secure input active — cannot type into password or secure fields")
             return
         }
-        if self.session == nil || self.currentConfiguredLocale?.identifier != Locale.current.identifier {
+
+        // If previously failed (e.g. Try Again clicked), or session is nil, or locale changed:
+        // thoroughly prepare speech assets and build a clean, fresh session.
+        if wasFailed || self.session == nil || self.currentConfiguredLocale?.identifier != Locale.current.identifier {
             setStatus("Preparing on-device speech for \(Locale.current.identifier)…")
             try await prepareSpeechAssetsAndSession()
         }
         try Task.checkCancellation()
-        guard let activeSession = self.session else { return }
-        try await activeSession.start()
+        guard let activeSession = self.session else {
+            throw SpeechRecognizerError.modelLoadFailed("Could not initialize voice typing session.")
+        }
+        do {
+            try await activeSession.start()
+        } catch {
+            // Re-arm session on failure so subsequent attempts create fresh recognizer handles
+            self.session = nil
+            self.recognizer = nil
+            throw error
+        }
     }
 
     /// Finds and prepares an Apple-supported locale for the Mac's language.

@@ -60,11 +60,10 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     }
 
     private func installAndConfirmAssets(modules: [any SpeechModule]) async throws {
-        let retryInterval: UInt64 = 20
-        let maximumAttempts = 6
+        let retryIntervals: [UInt64] = [1, 2, 4, 8, 12, 15]
         var lastInstallationError: Error?
 
-        for attempt in 0..<maximumAttempts {
+        for (attempt, retryInterval) in retryIntervals.enumerated() {
             try Task.checkCancellation()
             switch await AssetInventory.status(forModules: modules) {
             case .installed:
@@ -75,7 +74,10 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
                 guard let request = try await AssetInventory.assetInstallationRequest(supporting: modules) else {
                     // A nil request means assets are already installed; allow
                     // the inventory a short time to reflect that state.
-                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    if await AssetInventory.status(forModules: modules) == .installed {
+                        return
+                    }
                     continue
                 }
                 do {
@@ -91,7 +93,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
                 if await AssetInventory.status(forModules: modules) == .installed {
                     return
                 }
-                if attempt + 1 < maximumAttempts {
+                if attempt + 1 < retryIntervals.count {
                     try await Task.sleep(nanoseconds: retryInterval * 1_000_000_000)
                 }
             @unknown default:
@@ -112,7 +114,14 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         let transcriber = SpeechTranscriber(locale: try await supportedLocale(), preset: .progressiveTranscription)
         try Task.checkCancellation()
         let modules: [any SpeechModule] = [transcriber]
-        guard await AssetInventory.status(forModules: modules) == .installed else {
+        var assetStatus = await AssetInventory.status(forModules: modules)
+        if assetStatus != .installed {
+            // Attempt self-healing: if the macOS speech daemon hibernated or assets
+            // need verification, wake the daemon and attach assets before failing.
+            try await installAssets()
+            assetStatus = await AssetInventory.status(forModules: modules)
+        }
+        guard assetStatus == .installed else {
             throw SpeechRecognizerError.modelUnavailable("Speech assets for \(locale.identifier) are not installed. Connect to the internet and press Try Again to restore them.")
         }
         try Task.checkCancellation()
@@ -157,6 +166,59 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             self.analyzer = nil
             self.outputFormat = nil
             if error is CancellationError { throw error }
+
+            // If macOS hibernated the speech daemon (NSCocoaErrorDomain Code=4099/4097),
+            // wait briefly for the daemon to respawn and retry once.
+            let nsError = error as NSError
+            if nsError.domain == NSCocoaErrorDomain && (nsError.code == 4099 || nsError.code == 4097) {
+                try await Task.sleep(nanoseconds: 300_000_000)
+                try Task.checkCancellation()
+                let retryTranscriber = SpeechTranscriber(locale: try await supportedLocale(), preset: .progressiveTranscription)
+                let retryModules: [any SpeechModule] = [retryTranscriber]
+                guard let retryOutputFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: retryModules) else {
+                    throw SpeechRecognizerError.unsupportedAudioFormat
+                }
+                let (retryStream, retryContinuation) = AsyncStream<AnalyzerInput>.makeStream(
+                    bufferingPolicy: .bufferingOldest(256)
+                )
+                let retryAnalyzer = SpeechAnalyzer(modules: retryModules, options: nil)
+                self.analyzer = retryAnalyzer
+                self.outputFormat = retryOutputFormat
+                self.inputContinuation = retryContinuation
+                confirmedText = ""
+                segmentBase = ""
+                segmentCommitted = ""
+                outputSampleOffset = 0
+                running = true
+
+                resultTask = Task { [weak self] in
+                    do {
+                        for try await result in retryTranscriber.results {
+                            self?.receive(result)
+                        }
+                    } catch {
+                        self?.onError?(SpeechRecognizerError.inferenceFailed(error.localizedDescription))
+                    }
+                }
+
+                do {
+                    try await retryAnalyzer.start(inputSequence: retryStream)
+                    try Task.checkCancellation()
+                    return
+                } catch {
+                    running = false
+                    retryContinuation.finish()
+                    resultTask?.cancel()
+                    await resultTask?.value
+                    resultTask = nil
+                    inputContinuation = nil
+                    self.analyzer = nil
+                    self.outputFormat = nil
+                    if error is CancellationError { throw error }
+                    throw SpeechRecognizerError.modelLoadFailed(error.localizedDescription)
+                }
+            }
+
             throw SpeechRecognizerError.modelLoadFailed(error.localizedDescription)
         }
     }
@@ -373,6 +435,11 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     }
 
     private func supportedLocale() async throws -> Locale {
+        if let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) {
+            return supported
+        }
+        // In case the speech daemon was cold or waking from sleep, retry once
+        try? await Task.sleep(nanoseconds: 300_000_000)
         guard let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) else {
             throw SpeechRecognizerError.modelUnavailable("The system speech model does not support locale \(locale.identifier).")
         }

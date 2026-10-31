@@ -26,6 +26,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MacVoice uses microphone audio for speech recognition and does not save recordings.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>MacVoice uses on-device speech recognition to transcribe your voice into text.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
