@@ -25,15 +25,118 @@ public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
         "im": "I'm", "ive": "I've", "ill": "I'll", "id": "I'd"
     ]
 
+    public static func normalizeVoiceCommands(_ text: String) -> String {
+        var result = text
+        // 1. Explicit Shift+Enter commands
+        result = result.replacingOccurrences(
+            of: "(?i)\\s*\\b(?:shift enter|shift return|soft return|soft break)\\b\\s*",
+            with: "\u{2028}",
+            options: .regularExpression
+        )
+        // 2. Paragraph break commands
+        result = result.replacingOccurrences(
+            of: "(?i)\\s*\\b(?:new paragraph|next paragraph|paragraph break)\\b\\s*",
+            with: "\n\n",
+            options: .regularExpression
+        )
+        // 3. Line break commands (including common accent misrecognitions like next slide / next light, and press/hit enter)
+        result = result.replacingOccurrences(
+            of: "(?i)\\s*\\b(?:switch to next line|switch to the next line|go to next line|go to the next line|move to next line|move to the next line|move to the next slide|move to next slide|move to the next light|move to next light|press enter|hit enter|press return|hit return|next line|new line|newline|nextline|line break)\\b\\s*",
+            with: "\n",
+            options: .regularExpression
+        )
+        // 4. Bullet point commands
+        result = result.replacingOccurrences(
+            of: "(?i)\\s*\\b(?:bullet point|bullet|next bullet)\\s+",
+            with: "\n- ",
+            options: .regularExpression
+        )
+
+        // 5. Numbered lists: ordinals (1st, 2nd, 3rd, 4th, first, second...)
+        // Handle "first" when used as an ordinal list item (not "at first")
+        result = result.replacingOccurrences(
+            of: "(?i)(?:^|(?<=[.,;:!?\n])\\s*)(?<!\\bat\\s)\\b(?:1st|firstly|first)\\b[:.]?\\s*",
+            with: "\n1. ",
+            options: .regularExpression
+        )
+
+        let ordinals = [
+            ("(?:2nd|secondly|second)", "2"),
+            ("(?:3rd|thirdly|third)", "3"),
+            ("(?:4th|fourthly|fourth)", "4"),
+            ("(?:5th|fifthly|fifth)", "5"),
+            ("(?:6th|sixthly|sixth)", "6"),
+            ("(?:7th|seventhly|seventh)", "7"),
+            ("(?:8th|eighthly|eighth)", "8"),
+            ("(?:9th|ninthly|ninth)", "9"),
+            ("(?:10th|tenthly|tenth)", "10")
+        ]
+        for (pattern, num) in ordinals {
+            result = result.replacingOccurrences(
+                of: "(?i)\\s*\\b\(pattern)\\b[:.]?\\s*",
+                with: "\n\(num). ",
+                options: .regularExpression
+            )
+        }
+
+        // 6. Common acoustic alias in Indian English lists: "fourth is" recognized as "for this"
+        // e.g. "3. Pran and for this. Something else" -> "3. Pran\n4. Something else"
+        result = result.replacingOccurrences(
+            of: "(?i)(?<=[0-9]\\.[^\n]{1,80})[,;.]?\\s*(?:and\\s+)?(?:for this|fourth is)\\b[:.]?\\s*",
+            with: "\n4. ",
+            options: .regularExpression
+        )
+
+        // 7. If item 2 exists ("\n2. "), convert any preceding "One <word>" or "1 <word>" at list start into "\n1. <word>"
+        result = result.replacingOccurrences(
+            of: "(?i)(?:^|(?<=[.,;:!?\n])\\s*)\\b(?:one|1)\\b[:.]?\\s+([a-zA-Z]+)(?=[^\n]*\n2\\.\\s+)",
+            with: "\n1. $1",
+            options: .regularExpression
+        )
+
+        // 8. Numbered lists: "number 1", "point 1", "item 1"
+        let numberWords = [
+            ("(?:one|1)", "1"),
+            ("(?:two|2)", "2"),
+            ("(?:three|3)", "3"),
+            ("(?:four|4)", "4"),
+            ("(?:five|5)", "5"),
+            ("(?:six|6)", "6"),
+            ("(?:seven|7)", "7"),
+            ("(?:eight|8)", "8"),
+            ("(?:nine|9)", "9"),
+            ("(?:ten|10)", "10")
+        ]
+        for (pattern, num) in numberWords {
+            result = result.replacingOccurrences(
+                of: "(?i)\\s*\\b(?:number|point|item)\\s+\(pattern)\\b[:.]?\\s*",
+                with: "\n\(num). ",
+                options: .regularExpression
+            )
+        }
+
+        // 9. Format inline numbered lists " 1. ", " 2. ", " 3. ", " 1) ", " 2) " onto separate lines
+        result = result.replacingOccurrences(
+            of: "(?<=\\S)[,;]?\\s+(?=[0-9]+[.)]\\s+)",
+            with: "\n",
+            options: .regularExpression
+        )
+
+        // 10. Spoken punctuation commands
+        result = result.replacingOccurrences(of: "(?i)\\s*\\bcomma\\b\\s*", with: ", ", options: .regularExpression)
+        result = result.replacingOccurrences(of: "(?i)\\s*\\b(?:full stop|period)\\b\\s*", with: ". ", options: .regularExpression)
+        result = result.replacingOccurrences(of: "(?i)\\s*\\bquestion mark\\b\\s*", with: "? ", options: .regularExpression)
+        result = result.replacingOccurrences(of: "(?i)\\s*\\b(?:exclamation mark|exclamation point)\\b\\s*", with: "! ", options: .regularExpression)
+        result = result.replacingOccurrences(of: "(?i)\\s*\\bcolon\\b\\s*", with: ": ", options: .regularExpression)
+        result = result.replacingOccurrences(of: "(?i)\\s*\\bsemicolon\\b\\s*", with: "; ", options: .regularExpression)
+
+        return result
+    }
+
     public func polish(_ transcript: String) async throws -> String {
         guard !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return transcript }
 
-        var text = transcript
-
-        // 1. Explicit voice navigation commands only (new line / new paragraph / bullet point)
-        text = text.replacingOccurrences(of: "(?i)\\bnew paragraph\\b", with: "\n\n", options: .regularExpression)
-        text = text.replacingOccurrences(of: "(?i)\\b(?:new line|next line)\\b", with: "\n", options: .regularExpression)
-        text = text.replacingOccurrences(of: "(?i)\\bbullet point\\s+", with: "\n- ", options: .regularExpression)
+        let text = Self.normalizeVoiceCommands(transcript)
 
         // 2. Clean fillers, repeated stutters, contractions, and solo pronoun 'I'
         let lines = text.components(separatedBy: "\n")
@@ -97,7 +200,7 @@ public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
             if shouldCapitalize && c.isLetter {
                 chars[i] = Character(c.uppercased())
                 shouldCapitalize = false
-            } else if ".!?\n".contains(c) {
+            } else if ".!?\n\u{2028}".contains(c) {
                 shouldCapitalize = true
             } else if c == "-" {
                 if i + 1 < chars.count && chars[i + 1] == " " {
@@ -304,8 +407,9 @@ public struct PhraseBuffer: Sendable {
 
     public mutating func append(_ stableDelta: String) -> [String] {
         pending += stableDelta
+        pending = NativeSwiftTranscriptPolisher.normalizeVoiceCommands(pending)
         var phrases: [String] = []
-        while let boundary = pending.firstIndex(where: { ".!?。！？।\n".contains($0) }) {
+        while let boundary = pending.firstIndex(where: { ".!?。！？।\n\u{2028}".contains($0) }) {
             let end = pending.index(after: boundary)
             phrases.append(String(pending[..<end]))
             pending = String(pending[end...])
@@ -318,12 +422,14 @@ public struct PhraseBuffer: Sendable {
                 pending = String(pending[cut...])
             } else { break }
         }
-        return phrases.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        return phrases.filter {
+            !$0.isEmpty && (!$0.trimmingCharacters(in: .whitespaces).isEmpty || $0.contains("\n") || $0.contains("\u{2028}"))
+        }
     }
 
     public mutating func flush() -> String? {
         defer { pending = "" }
-        guard !pending.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        guard !pending.isEmpty && (!pending.trimmingCharacters(in: .whitespaces).isEmpty || pending.contains("\n") || pending.contains("\u{2028}")) else { return nil }
         return pending
     }
 }

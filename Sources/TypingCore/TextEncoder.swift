@@ -25,6 +25,8 @@ enum TextEncoder {
                 try emitLineBreak(newlineBehavior, raw: "\n", to: body)
             } else if character == "\r" || character == "\n" {
                 try emitLineBreak(newlineBehavior, raw: String(character), to: body)
+            } else if character == "\u{2028}" {
+                try body(.shiftEnter)
             } else if character == "\t" {
                 try body(.unicode("\t"))
             } else {
@@ -39,9 +41,8 @@ enum TextEncoder {
         to body: (InputAction) throws -> Void
     ) rethrows {
         switch behavior {
-        case .smartChatAware, .newline: try body(.unicode(raw))
-        case .enter: try body(.keyCode(36)) // Return
-        case .shiftEnter: try body(.shiftEnter)
+        case .enter, .smartChatAware, .newline: try body(.keyCode(36)) // Physical Return Key
+        case .shiftEnter: try body(.shiftEnter) // Shift + Return Key
         case .omit: break
         }
     }

@@ -27,10 +27,20 @@ enum VoiceTypingCoreChecks {
             let lineBreakResult = try await nativePolisher.polish("hello new line im doing great")
             expect(lineBreakResult, "Hello\nI'm doing great")
 
+            let shiftEnterResult = try await nativePolisher.polish("hello shift enter world")
+            expect(shiftEnterResult, "Hello\u{2028}World")
+
+            let switchLineResult = try await nativePolisher.polish("switch to next line hello")
+            expect(switchLineResult, "\nHello")
+
+            let userTest = try await nativePolisher.polish("Hey, so we need to work on next few things. So now move to the next slide and write something for me or basically create a list for me. One banana, 2nd grapes, 3rd. Pran and for this. Something else.")
+            expect(userTest.contains("1. Banana\n2. Grapes\n3. Pran\n4. Something else."), true)
+
             let bulletResult = try await nativePolisher.polish("grocery items bullet point milk bullet point eggs")
             expect(bulletResult, "Grocery items\n- Milk\n- Eggs")
 
-            // Verify live streaming progressive reconciliation invariants
+            let ordinalResult = try await nativePolisher.polish("first buy milk, second buy eggs, third buy bread")
+            expect(ordinalResult, "\n1. Buy milk\n2. Buy eggs\n3. Buy bread")
             if #available(macOS 26.0, *) {
                 let r1 = AppleSpeechAnalyzerRecognizer.reconcileFinalText(
                     currentConfirmed: "hello world ",
@@ -47,6 +57,15 @@ enum VoiceTypingCoreChecks {
                 )
                 expect(r2.hasPrefix("hello world "), true)
                 expect(r2, "hello world ")
+
+                // Verify benchmark deduplication case: initial word revised or inserted
+                let r3 = AppleSpeechAnalyzerRecognizer.reconcileFinalText(
+                    currentConfirmed: "the world, this is a test or speech dictation in ",
+                    segmentBase: "",
+                    finalText: "In the world, this is a test or speech dictation in McVoice."
+                )
+                expect(r3.hasPrefix("the world, this is a test or speech dictation in "), true)
+                expect(r3, "the world, this is a test or speech dictation in McVoice.")
             }
             if CommandLine.arguments.contains("--mlx") {
                 let polisher = LocalMLXTranscriptPolisher()

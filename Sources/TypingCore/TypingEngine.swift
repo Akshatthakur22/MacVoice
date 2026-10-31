@@ -66,7 +66,9 @@ public final class TypingEngine: TypingOutput {
     private var effectiveNewlineBehavior: NewlineBehavior {
         switch newlineBehavior {
         case .smartChatAware:
-            return Self.isFrontmostAppChat ? .shiftEnter : .newline
+            return Self.isFrontmostAppChat ? .shiftEnter : .enter
+        case .newline:
+            return .enter
         default:
             return newlineBehavior
         }

@@ -11,7 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="https://macvoice.app"><img src="https://img.shields.io/badge/Official%20Website-macvoice.app-0071E3?style=for-the-badge&logo=apple&logoColor=white" alt="Official Website" /></a>
+  <a href="https://macvoice.akshatt.in/"><img src="https://img.shields.io/badge/Official%20Website-macvoice.akshatt.in-0071E3?style=for-the-badge&logo=apple&logoColor=white" alt="Official Website" /></a>
+  <a href="https://macvoice.akshatt.in/#pricing"><img src="https://img.shields.io/badge/Buy%20Once-%249%20USD%20Forever-059669?style=for-the-badge" alt="Price" /></a>
   <img src="https://img.shields.io/badge/Language-Pure%20Swift%206-F05138?style=for-the-badge&logo=swift&logoColor=white" alt="Swift" />
   <img src="https://img.shields.io/badge/Platform-macOS%2026%2B%20Apple%20Silicon-1D1D1F?style=for-the-badge&logo=apple&logoColor=white" alt="Platform" />
   <img src="https://img.shields.io/badge/Binary%20Size-784%20KB-059669?style=for-the-badge" alt="Binary Size" />

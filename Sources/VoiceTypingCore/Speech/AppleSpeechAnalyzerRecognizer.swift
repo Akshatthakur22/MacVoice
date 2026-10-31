@@ -400,7 +400,8 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     }
 
     /// Reconciles finalized segment text with whatever portion was already progressively streamed,
-    /// guaranteeing the append-only invariant required by TranscriptReconciler.
+    /// guaranteeing the append-only invariant required by TranscriptReconciler and preventing
+    /// duplicate word or phrase emissions.
     public static func reconcileFinalText(
         currentConfirmed: String,
         segmentBase: String,
@@ -414,24 +415,79 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             .split(whereSeparator: { $0.isWhitespace })
         let finalWords = finalText.split(whereSeparator: { $0.isWhitespace })
 
-        var matchCount = 0
-        while matchCount < committedWords.count && matchCount < finalWords.count {
-            let w1 = committedWords[matchCount].lowercased().trimmingCharacters(in: .punctuationCharacters)
-            let w2 = finalWords[matchCount].lowercased().trimmingCharacters(in: .punctuationCharacters)
-            if w1 == w2 {
-                matchCount += 1
-            } else {
-                break
-            }
-        }
-        if matchCount < finalWords.count {
-            let uncommittedWords = finalWords[matchCount...]
+        let uncommittedWords = findUncommittedWords(
+            committedWords: Array(committedWords),
+            finalWords: Array(finalWords)
+        )
+
+        if !uncommittedWords.isEmpty {
             let suffix = uncommittedWords.joined(separator: " ")
             let separator = (currentConfirmed.hasSuffix(" ") || currentConfirmed.isEmpty) ? "" : " "
             return currentConfirmed + separator + suffix
         } else {
             return currentConfirmed
         }
+    }
+
+    public static func findUncommittedWords(
+        committedWords: [Substring],
+        finalWords: [Substring]
+    ) -> [Substring] {
+        if committedWords.isEmpty { return finalWords }
+        if finalWords.isEmpty { return [] }
+
+        func normalize(_ word: Substring) -> String {
+            word.lowercased().trimmingCharacters(in: .punctuationCharacters)
+        }
+
+        let normCommitted = committedWords.map { normalize($0) }
+        let normFinal = finalWords.map { normalize($0) }
+
+        // 1. Check if prefix of finalWords matches prefix of committedWords
+        var prefixMatch = 0
+        while prefixMatch < normCommitted.count && prefixMatch < normFinal.count {
+            if normCommitted[prefixMatch] == normFinal[prefixMatch] {
+                prefixMatch += 1
+            } else {
+                break
+            }
+        }
+
+        // If prefixMatch covers all committed words, any remaining final words are new
+        if prefixMatch == normCommitted.count {
+            return Array(finalWords[prefixMatch...])
+        }
+
+        // 2. Search for where the tail of committedWords aligns in finalWords (suffix matching)
+        let maxMatchLen = min(normCommitted.count, normFinal.count)
+        for window in stride(from: maxMatchLen, through: 1, by: -1) {
+            let committedTail = normCommitted[(normCommitted.count - window)...]
+            for finalStart in stride(from: normFinal.count - window, through: 0, by: -1) {
+                let finalSlice = normFinal[finalStart..<(finalStart + window)]
+                if committedTail.elementsEqual(finalSlice) {
+                    let uncommittedStart = finalStart + window
+                    if uncommittedStart < finalWords.count {
+                        return Array(finalWords[uncommittedStart...])
+                    } else {
+                        return []
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback: If partial prefix matched, return words after prefixMatch
+        if prefixMatch > 0 {
+            return Array(finalWords[prefixMatch...])
+        }
+
+        // 4. Fallback: Search for the last recognized committed word in finalWords
+        if let lastCommittedWord = normCommitted.last,
+           let lastIndex = normFinal.lastIndex(of: lastCommittedWord),
+           lastIndex + 1 < finalWords.count {
+            return Array(finalWords[(lastIndex + 1)...])
+        }
+
+        return []
     }
 
     private func supportedLocale() async throws -> Locale {
