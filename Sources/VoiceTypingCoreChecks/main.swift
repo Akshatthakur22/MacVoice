@@ -24,6 +24,12 @@ enum VoiceTypingCoreChecks {
             let nativeResult = try await nativePolisher.polish("um i think we should ship it next week")
             expect(nativeResult, "I think we should ship it next week")
 
+            let lineBreakResult = try await nativePolisher.polish("hello new line im doing great")
+            expect(lineBreakResult, "Hello\nI'm doing great")
+
+            let bulletResult = try await nativePolisher.polish("grocery items bullet point milk bullet point eggs")
+            expect(bulletResult, "Grocery items\n- Milk\n- Eggs")
+
             // Verify live streaming progressive reconciliation invariants
             if #available(macOS 26.0, *) {
                 let r1 = AppleSpeechAnalyzerRecognizer.reconcileFinalText(

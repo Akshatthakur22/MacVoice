@@ -39,7 +39,7 @@ enum TextEncoder {
         to body: (InputAction) throws -> Void
     ) rethrows {
         switch behavior {
-        case .newline: try body(.unicode(raw))
+        case .smartChatAware, .newline: try body(.unicode(raw))
         case .enter: try body(.keyCode(36)) // Return
         case .shiftEnter: try body(.shiftEnter)
         case .omit: break

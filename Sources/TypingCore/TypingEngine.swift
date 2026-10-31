@@ -1,3 +1,4 @@
+import AppKit
 import Carbon
 import CoreGraphics
 import Foundation
@@ -11,6 +12,9 @@ public enum NewlineBehavior: Equatable {
     case enter
     /// Send Shift+Return (commonly inserts a line break in chat fields).
     case shiftEnter
+    /// Intelligently sends Shift+Return when frontmost app is a chat app (Slack, WhatsApp, Discord, etc.),
+    /// or standard newline in text editors/IDEs.
+    case smartChatAware
     /// Ignore newline characters.
     case omit
 }
@@ -57,6 +61,38 @@ public final class TypingEngine: TypingOutput {
                 newlineBehavior: NewlineBehavior) {
         self.interCharacterDelay = max(0, interCharacterDelay)
         self.newlineBehavior = newlineBehavior
+    }
+
+    private var effectiveNewlineBehavior: NewlineBehavior {
+        switch newlineBehavior {
+        case .smartChatAware:
+            return Self.isFrontmostAppChat ? .shiftEnter : .newline
+        default:
+            return newlineBehavior
+        }
+    }
+
+    public static var isFrontmostAppChat: Bool {
+        guard let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier?.lowercased() else {
+            return false
+        }
+        let chatBundleIdentifiers: Set<String> = [
+            "net.whatsapp.whatsapp",
+            "com.tinyspeck.slackmacgap",
+            "com.hnc.discord",
+            "ru.keepcoder.telegram",
+            "com.tdesktop.telegram",
+            "com.apple.mobilesms",
+            "com.facebook.archon",
+            "org.whispersystems.signal-desktop",
+            "com.microsoft.teams",
+            "com.microsoft.teams2",
+            "com.skype.skype",
+            "im.riot.app"
+        ]
+        if chatBundleIdentifiers.contains(bundleID) { return true }
+        let chatKeywords = ["slack", "whatsapp", "discord", "telegram", "messenger", "signal", "teams"]
+        return chatKeywords.contains(where: { bundleID.contains($0) })
     }
 
     /// Queue a complete string. Completion reports how many event pairs were
@@ -107,7 +143,7 @@ public final class TypingEngine: TypingOutput {
                 var posted = 0
                 var firstEventLatency: TimeInterval?
                 do {
-                    try TextEncoder.forEachAction(in: text, newlineBehavior: self.newlineBehavior) { action in
+                    try TextEncoder.forEachAction(in: text, newlineBehavior: self.effectiveNewlineBehavior) { action in
                         let isShiftEnter: Bool
                         if case .shiftEnter = action {
                             isShiftEnter = true

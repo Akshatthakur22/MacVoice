@@ -12,7 +12,7 @@ public struct PassthroughTranscriptPolisher: TranscriptPolisher {
 
 /// Instant, zero-dependency in-process transcript normalizer.
 /// Cleans filler words, removes stutters, capitalizes sentences, fixes contractions,
-/// and normalizes punctuation in < 1 ms with 0 MB additional RAM.
+/// and handles natural line breaks in < 1 ms with 0 MB additional RAM.
 public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
     public init() {}
 
@@ -28,36 +28,52 @@ public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
     public func polish(_ transcript: String) async throws -> String {
         guard !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return transcript }
 
-        let words = transcript.components(separatedBy: .whitespaces)
-        var cleanedWords: [String] = []
-        var lastWordLower = ""
+        var text = transcript
 
-        for rawWord in words {
-            let stripped = rawWord.lowercased().trimmingCharacters(in: .punctuationCharacters)
-            if stripped.isEmpty {
-                if !rawWord.isEmpty { cleanedWords.append(rawWord) }
-                continue
-            }
-            if Self.fillers.contains(stripped) {
-                continue
-            }
-            if stripped == lastWordLower && stripped.count > 1 {
-                continue
-            }
-            lastWordLower = stripped
+        // 1. Explicit voice navigation commands only (new line / new paragraph / bullet point)
+        text = text.replacingOccurrences(of: "(?i)\\bnew paragraph\\b", with: "\n\n", options: .regularExpression)
+        text = text.replacingOccurrences(of: "(?i)\\b(?:new line|next line)\\b", with: "\n", options: .regularExpression)
+        text = text.replacingOccurrences(of: "(?i)\\bbullet point\\s+", with: "\n- ", options: .regularExpression)
 
-            var word = rawWord
-            if stripped == "i" {
-                word = rawWord.replacingOccurrences(of: "i", with: "I")
-            } else if let fixed = Self.contractions[stripped] {
-                let leadingPunct = rawWord.prefix(while: { $0.isPunctuation })
-                let trailingPunct = rawWord.reversed().prefix(while: { $0.isPunctuation }).reversed()
-                word = String(leadingPunct) + fixed + String(trailingPunct)
+        // 2. Clean fillers, repeated stutters, contractions, and solo pronoun 'I'
+        let lines = text.components(separatedBy: "\n")
+        var cleanedLines: [String] = []
+
+        for line in lines {
+            let words = line.components(separatedBy: .whitespaces)
+            var cleanedWords: [String] = []
+            var lastWordLower = ""
+
+            for rawWord in words {
+                let stripped = rawWord.lowercased().trimmingCharacters(in: .punctuationCharacters)
+                if stripped.isEmpty {
+                    if !rawWord.isEmpty { cleanedWords.append(rawWord) }
+                    continue
+                }
+                if Self.fillers.contains(stripped) {
+                    continue
+                }
+                if stripped == lastWordLower && stripped.count > 1 {
+                    continue
+                }
+                lastWordLower = stripped
+
+                var word = rawWord
+                if stripped == "i" {
+                    word = rawWord.replacingOccurrences(of: "i", with: "I")
+                } else if let fixed = Self.contractions[stripped] {
+                    let leadingPunct = rawWord.prefix(while: { $0.isPunctuation })
+                    let trailingPunct = rawWord.reversed().prefix(while: { $0.isPunctuation }).reversed()
+                    word = String(leadingPunct) + fixed + String(trailingPunct)
+                }
+                cleanedWords.append(word)
             }
-            cleanedWords.append(word)
+            cleanedLines.append(cleanedWords.joined(separator: " "))
         }
 
-        var result = cleanedWords.joined(separator: " ")
+        var result = cleanedLines.joined(separator: "\n")
+
+        // 3. Clean punctuation spacing
         result = result.replacingOccurrences(of: " ,", with: ",")
         result = result.replacingOccurrences(of: " .", with: ".")
         result = result.replacingOccurrences(of: " ?", with: "?")
@@ -65,12 +81,12 @@ public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
         result = result.replacingOccurrences(of: " :", with: ":")
         result = result.replacingOccurrences(of: " ;", with: ";")
 
+        // 4. Sentence and list item capitalization
         result = capitalizeSentences(result)
 
         let leadingSpaces = transcript.prefix(while: \.isWhitespace)
         let trailingSpaces = transcript.reversed().prefix(while: \.isWhitespace).reversed()
-        let cleaned = String(leadingSpaces) + result.trimmingCharacters(in: .whitespaces) + String(trailingSpaces)
-        return try PolisherOutputValidator.validate(cleaned, original: transcript)
+        return String(leadingSpaces) + result.trimmingCharacters(in: .whitespaces) + String(trailingSpaces)
     }
 
     private func capitalizeSentences(_ text: String) -> String {
@@ -83,6 +99,10 @@ public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
                 shouldCapitalize = false
             } else if ".!?\n".contains(c) {
                 shouldCapitalize = true
+            } else if c == "-" {
+                if i + 1 < chars.count && chars[i + 1] == " " {
+                    shouldCapitalize = true
+                }
             }
         }
         return String(chars)

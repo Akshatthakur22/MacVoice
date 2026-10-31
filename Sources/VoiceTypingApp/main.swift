@@ -285,7 +285,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         modeTitle.font = .systemFont(ofSize: 14, weight: .semibold)
         modePicker = NSPopUpButton()
         modePicker.addItems(withTitles: ["Verbatim", "Polished"])
-        modePicker.selectItem(at: UserDefaults.standard.string(forKey: "typingMode") == PolishingMode.polished.rawValue ? 1 : 0)
+        modePicker.selectItem(at: (UserDefaults.standard.string(forKey: "typingMode") ?? PolishingMode.polished.rawValue) == PolishingMode.polished.rawValue ? 1 : 0)
         modePicker.target = self
         modePicker.action = #selector(modeChanged)
         modeExplanation = NSTextField(wrappingLabelWithString: "")
@@ -808,8 +808,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     private func configureSession(locale: Locale = Locale.current) async {
         let recognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
-        let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .newline)
-        let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? "verbatim") ?? .verbatim
+        let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .smartChatAware)
+        let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? PolishingMode.polished.rawValue) ?? .polished
         let polisher = NativeSwiftTranscriptPolisher()
         let session = VoiceTypingSession(
             audioCapture: AudioCapture(), recognizer: recognizer, typingEngine: engine,
@@ -836,11 +836,11 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         guard modePicker != nil else { return }
         let polished = modePicker.indexOfSelectedItem == 1
         modeSummary?.stringValue = polished
-            ? "Selected: Polished · cleans filler words, punctuation, and phrasing instantly."
+            ? "Selected: Polished (Default) · cleans fillers, auto-formats lists, and handles smart punctuation."
             : "Selected: Verbatim · sends recognized words directly with minimal changes."
         modeExplanation.stringValue = polished
-            ? "Removes fillers (um, uh, like) and normalizes punctuation and capitalization in real time."
-            : "Types recognized words with minimal changes."
+            ? "Removes fillers (um, uh), collapses stutters, auto-formats numbered & bullet lists, and responds to spoken punctuation (new line, comma, period) in real time."
+            : "Types recognized words directly with minimal changes."
         polisherSection.isHidden = !polished
         polisherSection.setAccessibilityElement(true)
         polisherSection.setAccessibilityLabel("Polished mode cleanup settings")
