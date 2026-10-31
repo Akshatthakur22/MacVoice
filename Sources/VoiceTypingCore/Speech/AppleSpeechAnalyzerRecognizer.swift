@@ -37,7 +37,14 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         guard SpeechTranscriber.isAvailable else {
             throw SpeechRecognizerError.modelUnavailable("SpeechTranscriber is unavailable on this Mac.")
         }
-        let transcriber = SpeechTranscriber(locale: try await supportedLocale(), preset: .progressiveTranscription)
+        let supported = try await supportedLocale()
+        let targetNorm = Self.normalizedLocaleID(supported.identifier)
+        let installed = await SpeechTranscriber.installedLocales
+        if installed.contains(where: { Self.normalizedLocaleID($0.identifier) == targetNorm }) {
+            return
+        }
+
+        let transcriber = SpeechTranscriber(locale: supported, preset: .progressiveTranscription)
         let modules: [any SpeechModule] = [transcriber]
 
         switch await AssetInventory.status(forModules: modules) {
@@ -111,18 +118,26 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         guard SpeechTranscriber.isAvailable else {
             throw SpeechRecognizerError.modelUnavailable("SpeechTranscriber is unavailable on this Mac.")
         }
-        let transcriber = SpeechTranscriber(locale: try await supportedLocale(), preset: .progressiveTranscription)
+        let supported = try await supportedLocale()
         try Task.checkCancellation()
+        let transcriber = SpeechTranscriber(locale: supported, preset: .progressiveTranscription)
         let modules: [any SpeechModule] = [transcriber]
-        var assetStatus = await AssetInventory.status(forModules: modules)
-        if assetStatus != .installed {
-            // Attempt self-healing: if the macOS speech daemon hibernated or assets
-            // need verification, wake the daemon and attach assets before failing.
-            try await installAssets()
-            assetStatus = await AssetInventory.status(forModules: modules)
-        }
-        guard assetStatus == .installed else {
-            throw SpeechRecognizerError.modelUnavailable("Speech assets for \(locale.identifier) are not installed. Connect to the internet and press Try Again to restore them.")
+
+        // Fast path: if the assets for this locale are already installed on disk,
+        // do not call installAssets() or hammer the XPC daemon with download requests!
+        let targetNorm = Self.normalizedLocaleID(supported.identifier)
+        let installed = await SpeechTranscriber.installedLocales
+        let isAlreadyOnDisk = installed.contains(where: { Self.normalizedLocaleID($0.identifier) == targetNorm })
+
+        if !isAlreadyOnDisk {
+            var assetStatus = await AssetInventory.status(forModules: modules)
+            if assetStatus != .installed {
+                try await installAssets()
+                assetStatus = await AssetInventory.status(forModules: modules)
+            }
+            guard assetStatus == .installed else {
+                throw SpeechRecognizerError.modelUnavailable("Speech assets for \(locale.identifier) are not installed. Connect to the internet and press Try Again to restore them.")
+            }
         }
         try Task.checkCancellation()
         guard let outputFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: modules) else {
@@ -488,6 +503,10 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         }
 
         return []
+    }
+
+    public static func normalizedLocaleID(_ identifier: String) -> String {
+        identifier.replacingOccurrences(of: "-", with: "_").lowercased()
     }
 
     private func supportedLocale() async throws -> Locale {

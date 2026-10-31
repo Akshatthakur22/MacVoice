@@ -673,64 +673,31 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         try Task.checkCancellation()
         let systemLocale = Locale.current
         let systemLanguage = systemLocale.language.languageCode?.identifier
-        let supported = await SpeechTranscriber.supportedLocales
-        try Task.checkCancellation()
-        let sameLanguage = supported.filter {
-            $0.language.languageCode?.identifier == systemLanguage
-        }
-        guard !sameLanguage.isEmpty else {
-            throw SpeechRecognizerError.modelUnavailable(
-                "macOS has no downloadable on-device speech model for your system language (\(systemLocale.identifier))."
-            )
-        }
+        let targetID = Self.normalizedLocaleID(systemLocale.identifier)
 
         let installedLocales = await SpeechTranscriber.installedLocales
         try Task.checkCancellation()
-        let installedIDs = Set(installedLocales.map { Self.normalizedLocaleID($0.identifier) })
-        let installedSameLanguage = sameLanguage.filter { installedIDs.contains(Self.normalizedLocaleID($0.identifier)) }.sorted {
-            let leftExact = Self.normalizedLocaleID($0.identifier) == Self.normalizedLocaleID(systemLocale.identifier)
-            let rightExact = Self.normalizedLocaleID($1.identifier) == Self.normalizedLocaleID(systemLocale.identifier)
-            if leftExact != rightExact { return leftExact }
-            return $0.identifier.localizedCaseInsensitiveCompare($1.identifier) == .orderedAscending
-        }
-        let exact = sameLanguage.first { Self.normalizedLocaleID($0.identifier) == Self.normalizedLocaleID(systemLocale.identifier) }
-        let fallback = sameLanguage.first {
-            Self.normalizedLocaleID($0.identifier) != Self.normalizedLocaleID(systemLocale.identifier)
-                && (systemLanguage != "en" || Self.normalizedLocaleID($0.identifier) == "en_us")
-        } ?? sameLanguage.first { Self.normalizedLocaleID($0.identifier) != Self.normalizedLocaleID(systemLocale.identifier) }
-        // Prefer an installed exact match, then other installed locales, then
-        // the system's regional match and language fallback. InstalledLocales
-        // can be stale while macOS reclaims assets, so keep the other supported
-        // locales available if installation of the first candidate fails.
-        var candidates: [Locale] = []
-        for locale in [exact] + installedSameLanguage + [fallback] + sameLanguage {
-            guard let locale else { continue }
-            let identifier = Self.normalizedLocaleID(locale.identifier)
-            if !candidates.contains(where: { Self.normalizedLocaleID($0.identifier) == identifier }) {
-                candidates.append(locale)
-            }
+
+        // 1. If an exact match is already installed on disk (e.g. en_IN), use it immediately!
+        if let exactInstalled = installedLocales.first(where: { Self.normalizedLocaleID($0.identifier) == targetID }) {
+            await configureSession(locale: exactInstalled)
+            return
         }
 
-        var lastError: Error?
-        for locale in candidates {
-            try Task.checkCancellation()
-            setStatus("Checking Apple speech model · \(locale.identifier)… First setup may download it.")
-            let candidateRecognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
-            do {
-                try await candidateRecognizer.installAssets()
-                try Task.checkCancellation()
-                await configureSession(locale: locale)
-                return
-            } catch {
-                if error is CancellationError || Task.isCancelled { throw CancellationError() }
-                lastError = error
-            }
+        // 2. If another regional match of the same language is already installed (e.g. en_US or en_GB), use it!
+        let installedSameLanguage = installedLocales.filter {
+            $0.language.languageCode?.identifier == systemLanguage
+        }
+        if let preferred = installedSameLanguage.first {
+            await configureSession(locale: preferred)
+            return
         }
 
-        let detail = lastError?.localizedDescription ?? "macOS did not install the speech assets."
-        throw SpeechRecognizerError.modelUnavailable(
-            "Automatic speech setup failed for \(candidates.map(\.identifier).joined(separator: ", ")). \(detail)"
-        )
+        // 3. Not installed on disk at all: attempt download for the system locale once
+        setStatus("Checking Apple speech model · \(systemLocale.identifier)… First setup may download it.")
+        let candidateRecognizer = AppleSpeechAnalyzerRecognizer(locale: systemLocale)
+        try await candidateRecognizer.installAssets()
+        await configureSession(locale: systemLocale)
     }
 
     private static func normalizedLocaleID(_ identifier: String) -> String {
