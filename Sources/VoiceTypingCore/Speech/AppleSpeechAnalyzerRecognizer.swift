@@ -16,6 +16,8 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
     private var resultTask: Task<Void, Never>?
     private var confirmedText = ""
+    private var segmentBase = ""
+    private var segmentCommitted = ""
     private var outputFormat: AVAudioFormat?
     private var converter: AVAudioConverter?
     private var converterInputFormat: AVAudioFormat?
@@ -127,6 +129,8 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         self.outputFormat = outputFormat
         self.inputContinuation = continuation
         confirmedText = ""
+        segmentBase = ""
+        segmentCommitted = ""
         outputSampleOffset = 0
         running = true
 
@@ -290,21 +294,81 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         cachedInputBuffer = nil
         cachedConvertedBuffer = nil
         outputFormat = nil
+        segmentBase = ""
+        segmentCommitted = ""
     }
 
     private func receive(_ result: SpeechTranscriber.Result) {
         let text = String(result.text.characters)
         if result.isFinal {
-            confirmedText += text
+            let full = Self.reconcileFinalText(
+                currentConfirmed: confirmedText,
+                segmentBase: segmentBase,
+                finalText: text
+            )
+            confirmedText = full
+            segmentBase = full
+            segmentCommitted = ""
             onUpdate?(SpeechRecognitionUpdate(
                 hypothesis: confirmedText,
-                confirmedTranscript: confirmedText
+                confirmedTranscript: confirmedText,
+                isFinal: false
             ))
         } else {
+            // Live progressive streaming: commit completed words as soon as a boundary is crossed
+            if let lastSpace = text.lastIndex(where: { $0.isWhitespace }) {
+                let stablePortion = String(text[...lastSpace])
+                if stablePortion.hasPrefix(segmentCommitted) && stablePortion.count > segmentCommitted.count {
+                    segmentCommitted = stablePortion
+                    confirmedText = segmentBase + segmentCommitted
+                    onUpdate?(SpeechRecognitionUpdate(
+                        hypothesis: segmentBase + text,
+                        confirmedTranscript: confirmedText,
+                        isFinal: false
+                    ))
+                    return
+                }
+            }
             onUpdate?(SpeechRecognitionUpdate(
-                hypothesis: confirmedText + text,
-                confirmedTranscript: confirmedText
+                hypothesis: segmentBase + text,
+                confirmedTranscript: confirmedText,
+                isFinal: false
             ))
+        }
+    }
+
+    /// Reconciles finalized segment text with whatever portion was already progressively streamed,
+    /// guaranteeing the append-only invariant required by TranscriptReconciler.
+    public static func reconcileFinalText(
+        currentConfirmed: String,
+        segmentBase: String,
+        finalText: String
+    ) -> String {
+        let proposed = segmentBase + finalText
+        if proposed.hasPrefix(currentConfirmed) {
+            return proposed
+        }
+        let committedWords = currentConfirmed.dropFirst(segmentBase.count)
+            .split(whereSeparator: { $0.isWhitespace })
+        let finalWords = finalText.split(whereSeparator: { $0.isWhitespace })
+
+        var matchCount = 0
+        while matchCount < committedWords.count && matchCount < finalWords.count {
+            let w1 = committedWords[matchCount].lowercased().trimmingCharacters(in: .punctuationCharacters)
+            let w2 = finalWords[matchCount].lowercased().trimmingCharacters(in: .punctuationCharacters)
+            if w1 == w2 {
+                matchCount += 1
+            } else {
+                break
+            }
+        }
+        if matchCount < finalWords.count {
+            let uncommittedWords = finalWords[matchCount...]
+            let suffix = uncommittedWords.joined(separator: " ")
+            let separator = (currentConfirmed.hasSuffix(" ") || currentConfirmed.isEmpty) ? "" : " "
+            return currentConfirmed + separator + suffix
+        } else {
+            return currentConfirmed
         }
     }
 

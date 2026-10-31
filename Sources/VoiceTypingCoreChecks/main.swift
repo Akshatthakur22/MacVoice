@@ -23,6 +23,25 @@ enum VoiceTypingCoreChecks {
             let nativePolisher = NativeSwiftTranscriptPolisher()
             let nativeResult = try await nativePolisher.polish("um i think we should ship it next week")
             expect(nativeResult, "I think we should ship it next week")
+
+            // Verify live streaming progressive reconciliation invariants
+            if #available(macOS 26.0, *) {
+                let r1 = AppleSpeechAnalyzerRecognizer.reconcileFinalText(
+                    currentConfirmed: "hello world ",
+                    segmentBase: "",
+                    finalText: "Hello world. How are you?"
+                )
+                expect(r1.hasPrefix("hello world "), true)
+                expect(r1, "hello world How are you?")
+
+                let r2 = AppleSpeechAnalyzerRecognizer.reconcileFinalText(
+                    currentConfirmed: "hello world ",
+                    segmentBase: "",
+                    finalText: "hello world"
+                )
+                expect(r2.hasPrefix("hello world "), true)
+                expect(r2, "hello world ")
+            }
             if CommandLine.arguments.contains("--mlx") {
                 let polisher = LocalMLXTranscriptPolisher()
                 let start = ContinuousClock.now
