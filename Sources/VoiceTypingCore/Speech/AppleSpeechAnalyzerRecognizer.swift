@@ -46,34 +46,56 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             throw SpeechRecognizerError.modelUnavailable("macOS returned an unrecognized speech asset status for locale \(locale.identifier). Update macOS and try again.")
         }
 
-        guard let request = try await AssetInventory.assetInstallationRequest(supporting: modules) else {
-            // Apple documents nil as already installed. The inventory can lag
-            // that response, so wait for it to confirm before reporting success.
-            try await waitForInstalledAssets(modules: modules)
-            return
-        }
-
-        try await request.downloadAndInstall()
-        try await waitForInstalledAssets(modules: modules)
+        // macOS can return from the first request while the asset remains in
+        // `.downloading`; Apple documents that this can mean a deferred retry,
+        // rather than an active download. Re-request periodically so the
+        // system gets another installation attempt instead of only polling a
+        // stale status for two minutes.
+        try await installAndConfirmAssets(modules: modules)
     }
 
-    /// downloadAndInstall() can return while macOS is still downloading or
-    /// reconciling the inventory. Wait for an explicit installed status.
-    private func waitForInstalledAssets(modules: [any SpeechModule]) async throws {
-        for _ in 0..<240 {
+    private func installAndConfirmAssets(modules: [any SpeechModule]) async throws {
+        let retryInterval: UInt64 = 20
+        let maximumAttempts = 6
+        var lastInstallationError: Error?
+
+        for attempt in 0..<maximumAttempts {
+            try Task.checkCancellation()
             switch await AssetInventory.status(forModules: modules) {
             case .installed:
                 return
             case .unsupported:
                 throw SpeechRecognizerError.modelUnavailable("Apple does not support speech assets for locale \(locale.identifier) on this Mac.")
             case .supported, .downloading:
-                try await Task.sleep(nanoseconds: 500_000_000)
+                guard let request = try await AssetInventory.assetInstallationRequest(supporting: modules) else {
+                    // A nil request means assets are already installed; allow
+                    // the inventory a short time to reflect that state.
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                    continue
+                }
+                do {
+                    try await request.downloadAndInstall()
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    // The system may keep the locale queued and allow a later
+                    // request to succeed, so retain the error and retry.
+                    lastInstallationError = error
+                }
+                try Task.checkCancellation()
+                if await AssetInventory.status(forModules: modules) == .installed {
+                    return
+                }
+                if attempt + 1 < maximumAttempts {
+                    try await Task.sleep(nanoseconds: retryInterval * 1_000_000_000)
+                }
             @unknown default:
                 throw SpeechRecognizerError.modelUnavailable("macOS returned an unrecognized speech asset status for locale \(locale.identifier). Update macOS and try again.")
             }
         }
 
-        throw SpeechRecognizerError.modelUnavailable("macOS has not confirmed speech assets for \(locale.identifier) after 2 minutes. Check the internet connection and try dictation again.")
+        let detail = lastInstallationError.map { " Last error: \($0.localizedDescription)" } ?? ""
+        throw SpeechRecognizerError.modelUnavailable("macOS has not installed speech assets for \(locale.identifier) after repeated download attempts. Check the internet connection and macOS Software Update, then press Try Again.\(detail)")
     }
 
     public func start() async throws {
@@ -95,7 +117,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         try Task.checkCancellation()
 
         let (inputStream, continuation) = AsyncStream<AnalyzerInput>.makeStream(
-            bufferingPolicy: .bufferingOldest(32)
+            bufferingPolicy: .bufferingOldest(256)
         )
         let analyzer = SpeechAnalyzer(modules: modules, options: nil)
         self.analyzer = analyzer

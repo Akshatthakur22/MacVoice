@@ -57,6 +57,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var shortcut: GlobalShortcut?
     private var session: VoiceTypingSession?
+    private var currentConfiguredLocale: Locale?
     private let sessionStartCoordinator = SessionStartCoordinator()
     private var recognizer: AppleSpeechAnalyzerRecognizer?
     private var polisher: LocalMLXTranscriptPolisher?
@@ -84,7 +85,9 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         }
         buildMenu()
         buildControlWindow()
-        configureSession()
+        Task { @MainActor in
+            await self.configureSession()
+        }
 
         let shortcutKeyCode = (savedShortcut?["keyCode"] as? NSNumber)?.uint32Value ?? GlobalShortcut.defaultKeyCode
         let shortcutModifiers = (savedShortcut?["modifiers"] as? NSNumber)?.uint32Value ?? GlobalShortcut.defaultModifiers
@@ -524,10 +527,10 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleListening() {
-        guard let session else { return }
+        guard let session = self.session else { return }
         sessionStartCoordinator.begin(operation: { [weak self] in
             guard let self else { return }
-            try await self.performToggle(session)
+            try await self.performToggle(self.session ?? session)
         }, onFailure: { [weak self] error in
             self?.setStatus(error.localizedDescription)
         })
@@ -552,8 +555,15 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             setStatus("Microphone access denied")
             return
         }
-        setStatus("Preparing on-device speech for \(Locale.current.identifier)…")
-        try await prepareSpeechAssetsAndSession()
+        guard CGPreflightPostEventAccess() else {
+            setStatus("Enable MacVoice under Privacy & Security → Accessibility, then reopen the app")
+            requestTypingAccess()
+            return
+        }
+        if self.session == nil || self.currentConfiguredLocale?.identifier != Locale.current.identifier {
+            setStatus("Preparing on-device speech for \(Locale.current.identifier)…")
+            try await prepareSpeechAssetsAndSession()
+        }
         try Task.checkCancellation()
         guard let activeSession = self.session else { return }
         try await activeSession.start()
@@ -591,19 +601,28 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             Self.normalizedLocaleID($0.identifier) != Self.normalizedLocaleID(systemLocale.identifier)
                 && (systemLanguage != "en" || Self.normalizedLocaleID($0.identifier) == "en_us")
         } ?? sameLanguage.first { Self.normalizedLocaleID($0.identifier) != Self.normalizedLocaleID(systemLocale.identifier) }
-        let candidates = installedSameLanguage.isEmpty
-            ? [exact, fallback].compactMap { $0 }
-            : Array(installedSameLanguage.prefix(1))
+        // Prefer an installed exact match, then other installed locales, then
+        // the system's regional match and language fallback. InstalledLocales
+        // can be stale while macOS reclaims assets, so keep the other supported
+        // locales available if installation of the first candidate fails.
+        var candidates: [Locale] = []
+        for locale in [exact] + installedSameLanguage + [fallback] + sameLanguage {
+            guard let locale else { continue }
+            let identifier = Self.normalizedLocaleID(locale.identifier)
+            if !candidates.contains(where: { Self.normalizedLocaleID($0.identifier) == identifier }) {
+                candidates.append(locale)
+            }
+        }
 
         var lastError: Error?
         for locale in candidates {
             try Task.checkCancellation()
-            setStatus("Preparing on-device speech · \(locale.identifier)…")
+            setStatus("Checking Apple speech model · \(locale.identifier)… First setup may download it.")
             let candidateRecognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
             do {
                 try await candidateRecognizer.installAssets()
                 try Task.checkCancellation()
-                configureSession(locale: locale)
+                await configureSession(locale: locale)
                 return
             } catch {
                 if error is CancellationError || Task.isCancelled { throw CancellationError() }
@@ -649,8 +668,10 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let mode: PolishingMode = modePicker.indexOfSelectedItem == 1 ? .polished : .verbatim
         UserDefaults.standard.set(mode.rawValue, forKey: "typingMode")
         updateModeUI()
-        configureSession()
-        setStatus(mode == .polished ? "Polished mode selected" : "Verbatim mode selected")
+        Task { @MainActor in
+            await self.configureSession(locale: self.currentConfiguredLocale ?? Locale.current)
+            self.setStatus(mode == .polished ? "Polished mode selected" : "Verbatim mode selected")
+        }
     }
 
     @objc private func installPolisher() {
@@ -727,11 +748,11 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func configureSession(locale: Locale = Locale.current) {
+    private func configureSession(locale: Locale = Locale.current) async {
         let recognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
         let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .newline)
         let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? "verbatim") ?? .verbatim
-        if let oldPolisher = polisher { Task { await oldPolisher.stop() } }
+        if let oldPolisher = polisher { await oldPolisher.stop() }
         let polisher = LocalMLXTranscriptPolisher()
         self.polisher = polisher
         let session = VoiceTypingSession(
@@ -740,14 +761,13 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         )
         self.recognizer = recognizer
         self.session = session
+        self.currentConfiguredLocale = locale
         updatePolisherStatus()
-        Task { [weak self] in
-            await session.setStateChangeHandler { [weak self] state in
-                Task { @MainActor in self?.render(state) }
-            }
-            await session.setWarningHandler { [weak self] message in
-                Task { @MainActor in self?.setStatus(message) }
-            }
+        await session.setStateChangeHandler { [weak self] state in
+            Task { @MainActor in self?.render(state) }
+        }
+        await session.setWarningHandler { [weak self] message in
+            Task { @MainActor in self?.setStatus(message) }
         }
     }
 

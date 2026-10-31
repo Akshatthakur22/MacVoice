@@ -89,10 +89,10 @@ public actor VoiceTypingSession {
         }
 
         let (audioStream, audioStreamContinuation) = AsyncStream<PCMFrame>.makeStream(
-            bufferingPolicy: .bufferingOldest(32)
+            bufferingPolicy: .bufferingOldest(256)
         )
         let (updateStream, updateStreamContinuation) = AsyncStream<SpeechRecognitionUpdate>.makeStream(
-            bufferingPolicy: .bufferingNewest(32)
+            bufferingPolicy: .bufferingNewest(64)
         )
         audioContinuation = audioStreamContinuation
         updateContinuation = updateStreamContinuation
