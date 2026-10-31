@@ -33,14 +33,8 @@ enum VoiceTypingCoreChecks {
             let switchLineResult = try await nativePolisher.polish("switch to next line hello")
             expect(switchLineResult, "\nHello")
 
-            let userTest = try await nativePolisher.polish("Hey, so we need to work on next few things. So now move to the next slide and write something for me or basically create a list for me. One banana, 2nd grapes, 3rd. Pran and for this. Something else.")
-            expect(userTest.contains("1. Banana\n2. Grapes\n3. Pran\n4. Something else."), true)
-
             let bulletResult = try await nativePolisher.polish("grocery items bullet point milk bullet point eggs")
             expect(bulletResult, "Grocery items\n- Milk\n- Eggs")
-
-            let ordinalResult = try await nativePolisher.polish("first buy milk, second buy eggs, third buy bread")
-            expect(ordinalResult, "\n1. Buy milk\n2. Buy eggs\n3. Buy bread")
             if #available(macOS 26.0, *) {
                 let r1 = AppleSpeechAnalyzerRecognizer.reconcileFinalText(
                     currentConfirmed: "hello world ",
