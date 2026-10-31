@@ -19,6 +19,9 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     private var outputFormat: AVAudioFormat?
     private var converter: AVAudioConverter?
     private var converterInputFormat: AVAudioFormat?
+    private var cachedInputFormat: AVAudioFormat?
+    private var cachedInputBuffer: AVAudioPCMBuffer?
+    private var cachedConvertedBuffer: AVAudioPCMBuffer?
     private var outputSampleOffset: Int64 = 0
     private var running = false
 
@@ -159,24 +162,56 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         guard running, let continuation = inputContinuation, let outputFormat else {
             throw SpeechRecognizerError.stopped
         }
-        let inputFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: frame.sampleRate,
-            channels: AVAudioChannelCount(frame.channelCount),
-            interleaved: false
-        )
-        guard let inputFormat,
-              let inputBuffer = AVAudioPCMBuffer(
+
+        let inputFormat: AVAudioFormat
+        if let cached = cachedInputFormat,
+           cached.sampleRate == frame.sampleRate,
+           cached.channelCount == AVAudioChannelCount(frame.channelCount) {
+            inputFormat = cached
+        } else {
+            guard let newFormat = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: frame.sampleRate,
+                channels: AVAudioChannelCount(frame.channelCount),
+                interleaved: false
+            ) else {
+                throw SpeechRecognizerError.unsupportedAudioFormat
+            }
+            inputFormat = newFormat
+            cachedInputFormat = newFormat
+        }
+
+        let inputBuffer: AVAudioPCMBuffer
+        if let cachedBuf = cachedInputBuffer,
+           cachedBuf.format == inputFormat,
+           cachedBuf.frameCapacity >= AVAudioFrameCount(frame.frameCount) {
+            inputBuffer = cachedBuf
+        } else {
+            guard let newBuf = AVAudioPCMBuffer(
                 pcmFormat: inputFormat,
-                frameCapacity: AVAudioFrameCount(frame.frameCount)
-              ),
-              let channelData = inputBuffer.floatChannelData else {
-            throw SpeechRecognizerError.unsupportedAudioFormat
+                frameCapacity: max(AVAudioFrameCount(frame.frameCount), 2048)
+            ) else {
+                throw SpeechRecognizerError.unsupportedAudioFormat
+            }
+            inputBuffer = newBuf
+            cachedInputBuffer = newBuf
         }
         inputBuffer.frameLength = AVAudioFrameCount(frame.frameCount)
-        for channel in 0..<frame.channelCount {
-            for index in 0..<frame.frameCount {
-                channelData[channel][index] = frame.samples[index * frame.channelCount + channel]
+
+        guard let channelData = inputBuffer.floatChannelData else {
+            throw SpeechRecognizerError.unsupportedAudioFormat
+        }
+        if frame.channelCount == 1 {
+            frame.samples.withUnsafeBufferPointer { src in
+                if let base = src.baseAddress {
+                    channelData[0].initialize(from: base, count: frame.frameCount)
+                }
+            }
+        } else {
+            for channel in 0..<frame.channelCount {
+                for index in 0..<frame.frameCount {
+                    channelData[channel][index] = frame.samples[index * frame.channelCount + channel]
+                }
             }
         }
 
@@ -190,9 +225,20 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         guard let converter else { throw SpeechRecognizerError.unsupportedAudioFormat }
         let ratio = outputFormat.sampleRate / inputFormat.sampleRate
         let capacity = AVAudioFrameCount(ceil(Double(frame.frameCount) * ratio) + 32)
-        guard let converted = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else {
-            throw SpeechRecognizerError.unsupportedAudioFormat
+        let converted: AVAudioPCMBuffer
+        if let cachedConv = cachedConvertedBuffer,
+           cachedConv.format == outputFormat,
+           cachedConv.frameCapacity >= capacity {
+            converted = cachedConv
+            converted.frameLength = 0
+        } else {
+            guard let newConv = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: max(capacity, 2048)) else {
+                throw SpeechRecognizerError.unsupportedAudioFormat
+            }
+            converted = newConv
+            cachedConvertedBuffer = newConv
         }
+
         var conversionError: NSError?
         var suppliedInput = false
         let status = converter.convert(to: converted, error: &conversionError) { _, inputStatus in
@@ -240,6 +286,9 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         analyzer = nil
         converter = nil
         converterInputFormat = nil
+        cachedInputFormat = nil
+        cachedInputBuffer = nil
+        cachedConvertedBuffer = nil
         outputFormat = nil
     }
 

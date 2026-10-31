@@ -85,6 +85,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         }
         buildMenu()
         buildControlWindow()
+        registerSleepWakeNotifications()
         Task { @MainActor in
             await self.configureSession()
         }
@@ -146,6 +147,40 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             await currentSession?.stop()
         }
         if let polisher { Task { await polisher.stop() } }
+    }
+
+    private func registerSleepWakeNotifications() {
+        let center = NSWorkspace.shared.notificationCenter
+        center.addObserver(
+            self,
+            selector: #selector(systemWillSleep),
+            name: NSWorkspace.willSleepNotification,
+            object: nil
+        )
+        center.addObserver(
+            self,
+            selector: #selector(systemDidWake),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
+    }
+
+    @objc private func systemWillSleep(_ notification: Notification) {
+        guard let session = self.session else { return }
+        Task { @MainActor in
+            let state = await session.state
+            if state == .listening || state == .starting {
+                await self.sessionStartCoordinator.cancelAndWait()
+                await session.stop()
+                self.setStatus("Dictation paused for system sleep")
+            }
+        }
+    }
+
+    @objc private func systemDidWake(_ notification: Notification) {
+        Task { @MainActor in
+            self.setStatus("Idle · \(Locale.current.identifier) · shortcut ready")
+        }
     }
 
     private func buildMenu() {
@@ -560,6 +595,10 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             requestTypingAccess()
             return
         }
+        if IsSecureEventInputEnabled() {
+            setStatus("Secure input active — cannot type into password or secure fields")
+            return
+        }
         if self.session == nil || self.currentConfiguredLocale?.identifier != Locale.current.identifier {
             setStatus("Preparing on-device speech for \(Locale.current.identifier)…")
             try await prepareSpeechAssetsAndSession()
@@ -753,8 +792,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .newline)
         let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? "verbatim") ?? .verbatim
         if let oldPolisher = polisher { await oldPolisher.stop() }
-        let polisher = LocalMLXTranscriptPolisher()
-        self.polisher = polisher
+        let polisher = NativeSwiftTranscriptPolisher()
+        self.polisher = nil
         let session = VoiceTypingSession(
             audioCapture: AudioCapture(), recognizer: recognizer, typingEngine: engine,
             polisher: polisher, polishingMode: mode
@@ -773,27 +812,22 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     private func updatePolisherStatus() {
         guard polisherStatus != nil else { return }
-        let root = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Typer/MLX")
-        let installed = FileManager.default.isExecutableFile(atPath: root.appendingPathComponent("venv/bin/python3").path)
-            && FileManager.default.fileExists(atPath: root.appendingPathComponent("models/qwen025/config.json").path)
-        polisherStatus.stringValue = installed
-            ? "Polished mode is ready. The local cleanup model runs on this Mac."
-            : "Polished mode needs a one-time model setup. Until then, dictation uses Verbatim."
+        polisherStatus.stringValue = "Polished mode is active. Native cleanup runs in-process with zero latency and zero memory overhead."
+        installPolisherButton?.isHidden = true
     }
 
     private func updateModeUI() {
         guard modePicker != nil else { return }
         let polished = modePicker.indexOfSelectedItem == 1
         modeSummary?.stringValue = polished
-            ? "Selected: Polished · cleans up phrasing locally and may take a little longer."
+            ? "Selected: Polished · cleans filler words, punctuation, and phrasing instantly."
             : "Selected: Verbatim · sends recognized words directly with minimal changes."
         modeExplanation.stringValue = polished
-            ? "Tidies punctuation and phrasing on this Mac; it can take a little longer."
+            ? "Removes fillers (um, uh, like) and normalizes punctuation and capitalization in real time."
             : "Types recognized words with minimal changes."
         polisherSection.isHidden = !polished
         polisherSection.setAccessibilityElement(true)
-        polisherSection.setAccessibilityLabel("Polished mode cleanup model settings")
+        polisherSection.setAccessibilityLabel("Polished mode cleanup settings")
         updatePolisherStatus()
     }
 

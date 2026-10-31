@@ -1,3 +1,4 @@
+import Carbon
 import CoreGraphics
 import Foundation
 
@@ -100,6 +101,8 @@ public final class TypingEngine: TypingOutput {
             let result: Result<TypingReport, TypingError>
             if !CGPreflightPostEventAccess() {
                 result = .failure(.postEventPermissionRequired)
+            } else if IsSecureEventInputEnabled() {
+                result = .failure(.secureInputActive)
             } else {
                 var posted = 0
                 var firstEventLatency: TimeInterval?

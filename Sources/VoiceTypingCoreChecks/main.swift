@@ -20,6 +20,9 @@ enum VoiceTypingCoreChecks {
             preconditionFailure("Expected a confirmed-prefix revision to be rejected")
         } catch TranscriptReconciliationError.confirmedTextWasRevised {
             try checkPhraseBuffer()
+            let nativePolisher = NativeSwiftTranscriptPolisher()
+            let nativeResult = try await nativePolisher.polish("um i think we should ship it next week")
+            expect(nativeResult, "I think we should ship it next week")
             if CommandLine.arguments.contains("--mlx") {
                 let polisher = LocalMLXTranscriptPolisher()
                 let start = ContinuousClock.now

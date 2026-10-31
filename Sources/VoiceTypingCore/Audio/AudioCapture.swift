@@ -69,9 +69,17 @@ public final class AudioCapture: AudioCapturing {
     private let lock = NSLock()
     private let framesPerBuffer: AVAudioFrameCount
     private var running = false
+    private var configurationObserver: (any NSObjectProtocol)?
 
     public init(framesPerBuffer: AVAudioFrameCount = 512) {
         self.framesPerBuffer = max(1, framesPerBuffer)
+        self.configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: nil
+        ) { [weak self] _ in
+            self?.handleConfigurationChange()
+        }
     }
 
     /// Requests microphone permission. The host remains responsible for its
@@ -94,31 +102,7 @@ public final class AudioCapture: AudioCapturing {
             throw AudioCaptureError.noInputDevice
         }
 
-        let frameHandler = onFrame
-        let errorHandler = onError
-        input.installTap(onBus: 0, bufferSize: framesPerBuffer, format: format) { buffer, _ in
-            guard let channels = buffer.floatChannelData else {
-                errorHandler?(.unsupportedAudioFormat)
-                return
-            }
-
-            let channelCount = Int(buffer.format.channelCount)
-            let frameCount = Int(buffer.frameLength)
-            var samples = [Float](repeating: 0, count: frameCount * channelCount)
-            for frame in 0..<frameCount {
-                for channel in 0..<channelCount {
-                    samples[frame * channelCount + channel] = channels[channel][frame]
-                }
-            }
-            frameHandler?(PCMFrame(
-                samples: samples,
-                sampleRate: buffer.format.sampleRate,
-                channelCount: channelCount,
-                frameCount: frameCount,
-                deliveryUptimeNanoseconds: DispatchTime.now().uptimeNanoseconds
-            ))
-        }
-
+        installTap(on: input, format: format)
         engine.prepare()
         do {
             try engine.start()
@@ -138,7 +122,75 @@ public final class AudioCapture: AudioCapturing {
         running = false
     }
 
+    private func handleConfigurationChange() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard running else { return }
+
+        let input = engine.inputNode
+        input.removeTap(onBus: 0)
+        engine.stop()
+
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            running = false
+            onError?(.noInputDevice)
+            return
+        }
+
+        installTap(on: input, format: format)
+        engine.prepare()
+        do {
+            try engine.start()
+        } catch {
+            input.removeTap(onBus: 0)
+            running = false
+            onError?(.engineStartFailed(error.localizedDescription))
+        }
+    }
+
+    private func installTap(on input: AVAudioNode, format: AVAudioFormat) {
+        let frameHandler = onFrame
+        let errorHandler = onError
+        input.installTap(onBus: 0, bufferSize: framesPerBuffer, format: format) { buffer, _ in
+            guard let channels = buffer.floatChannelData else {
+                errorHandler?(.unsupportedAudioFormat)
+                return
+            }
+
+            let channelCount = Int(buffer.format.channelCount)
+            let frameCount = Int(buffer.frameLength)
+            guard frameCount > 0 else { return }
+
+            var samples = [Float](repeating: 0, count: frameCount * channelCount)
+            if channelCount == 1 {
+                samples.withUnsafeMutableBufferPointer { dst in
+                    if let base = dst.baseAddress {
+                        base.initialize(from: channels[0], count: frameCount)
+                    }
+                }
+            } else {
+                for frame in 0..<frameCount {
+                    for channel in 0..<channelCount {
+                        samples[frame * channelCount + channel] = channels[channel][frame]
+                    }
+                }
+            }
+
+            frameHandler?(PCMFrame(
+                samples: samples,
+                sampleRate: buffer.format.sampleRate,
+                channelCount: channelCount,
+                frameCount: frameCount,
+                deliveryUptimeNanoseconds: DispatchTime.now().uptimeNanoseconds
+            ))
+        }
+    }
+
     deinit {
         stop()
+        if let observer = configurationObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 }
