@@ -415,8 +415,8 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     }
 
     /// Reconciles finalized segment text with whatever portion was already progressively streamed,
-    /// guaranteeing the append-only invariant required by TranscriptReconciler and preventing
-    /// duplicate word or phrase emissions.
+    /// guaranteeing the append-only invariant required by TranscriptReconciler, preserving
+    /// sentence punctuation on previously streamed words, and preventing duplicate emissions.
     public static func reconcileFinalText(
         currentConfirmed: String,
         segmentBase: String,
@@ -435,13 +435,50 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             finalWords: Array(finalWords)
         )
 
+        // Find trailing punctuation of the last matched word in finalWords
+        var trailingPunct = ""
+        if !finalWords.isEmpty {
+            let uncommittedCount = uncommittedWords.count
+            let lastMatchedIndex = finalWords.count - uncommittedCount - 1
+            if lastMatchedIndex >= 0 && lastMatchedIndex < finalWords.count {
+                let matchedWord = finalWords[lastMatchedIndex]
+                let punc = extractTrailingPunctuation(from: matchedWord)
+                let trimmed = currentConfirmed.trimmingCharacters(in: .whitespaces)
+                if !punc.isEmpty && !trimmed.hasSuffix(punc) {
+                    trailingPunct = punc
+                }
+            }
+        }
+
         if !uncommittedWords.isEmpty {
             let suffix = uncommittedWords.joined(separator: " ")
-            let separator = (currentConfirmed.hasSuffix(" ") || currentConfirmed.isEmpty) ? "" : " "
-            return currentConfirmed + separator + suffix
+            if !trailingPunct.isEmpty {
+                let base = currentConfirmed.hasSuffix(" ") ? String(currentConfirmed.dropLast()) : currentConfirmed
+                return base + trailingPunct + " " + suffix
+            } else {
+                let separator = (currentConfirmed.hasSuffix(" ") || currentConfirmed.isEmpty) ? "" : " "
+                return currentConfirmed + separator + suffix
+            }
         } else {
-            return currentConfirmed
+            if !trailingPunct.isEmpty {
+                let base = currentConfirmed.hasSuffix(" ") ? String(currentConfirmed.dropLast()) : currentConfirmed
+                return base + trailingPunct
+            } else {
+                return currentConfirmed
+            }
         }
+    }
+
+    private static func extractTrailingPunctuation(from word: Substring) -> String {
+        var punc = ""
+        for char in word.reversed() {
+            if char.isPunctuation {
+                punc.insert(char, at: punc.startIndex)
+            } else {
+                break
+            }
+        }
+        return punc
     }
 
     public static func findUncommittedWords(

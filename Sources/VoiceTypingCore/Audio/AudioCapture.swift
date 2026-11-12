@@ -162,19 +162,20 @@ public final class AudioCapture: AudioCapturing {
             let frameCount = Int(buffer.frameLength)
             guard frameCount > 0 else { return }
 
-            var samples = [Float](repeating: 0, count: frameCount * channelCount)
-            if channelCount == 1 {
-                samples.withUnsafeMutableBufferPointer { dst in
+            let totalSamples = frameCount * channelCount
+            let samples = [Float](unsafeUninitializedCapacity: totalSamples) { dst, initializedCount in
+                if channelCount == 1 {
                     if let base = dst.baseAddress {
                         base.initialize(from: channels[0], count: frameCount)
                     }
-                }
-            } else {
-                for frame in 0..<frameCount {
-                    for channel in 0..<channelCount {
-                        samples[frame * channelCount + channel] = channels[channel][frame]
+                } else {
+                    for frame in 0..<frameCount {
+                        for channel in 0..<channelCount {
+                            dst[frame * channelCount + channel] = channels[channel][frame]
+                        }
                     }
                 }
+                initializedCount = totalSamples
             }
 
             frameHandler?(PCMFrame(

@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Carbon
 import CoreGraphics
 import Foundation
@@ -75,9 +76,8 @@ public final class TypingEngine: TypingOutput {
     }
 
     public static var isFrontmostAppChat: Bool {
-        guard let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier?.lowercased() else {
-            return false
-        }
+        guard let frontmost = NSWorkspace.shared.frontmostApplication else { return false }
+        let bundleID = frontmost.bundleIdentifier?.lowercased() ?? ""
         let chatBundleIdentifiers: Set<String> = [
             "net.whatsapp.whatsapp",
             "com.tinyspeck.slackmacgap",
@@ -94,7 +94,23 @@ public final class TypingEngine: TypingOutput {
         ]
         if chatBundleIdentifiers.contains(bundleID) { return true }
         let chatKeywords = ["slack", "whatsapp", "discord", "telegram", "messenger", "signal", "teams"]
-        return chatKeywords.contains(where: { bundleID.contains($0) })
+        if chatKeywords.contains(where: { bundleID.contains($0) }) { return true }
+
+        // Web chat detection: inspect frontmost window title via Accessibility (e.g. Slack Web, WhatsApp Web in Chrome/Safari)
+        let appElement = AXUIElementCreateApplication(frontmost.processIdentifier)
+        var windowValue: AnyObject?
+        if AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowValue) == .success,
+           let window = windowValue {
+            var titleValue: AnyObject?
+            if AXUIElementCopyAttributeValue(window as! AXUIElement, kAXTitleAttribute as CFString, &titleValue) == .success,
+               let title = titleValue as? String {
+                let lowerTitle = title.lowercased()
+                if chatKeywords.contains(where: { lowerTitle.contains($0) }) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     /// Queue a complete string. Completion reports how many event pairs were

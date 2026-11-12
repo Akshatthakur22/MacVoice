@@ -1,8 +1,9 @@
-import XCTest
+import Testing
 @testable import VoiceTypingCore
 
-final class AudioCaptureTests: XCTestCase {
-    func testPCMFramePreservesSamplesAndFormatMetadata() {
+@Suite("AudioCaptureTests")
+struct AudioCaptureTests {
+    @Test func pcmFramePreservesSamplesAndFormatMetadata() {
         let frame = PCMFrame(
             samples: [0.25, -0.25, 0.5, -0.5],
             sampleRate: 48_000,
@@ -11,10 +12,11 @@ final class AudioCaptureTests: XCTestCase {
             deliveryUptimeNanoseconds: 123
         )
 
-        XCTAssertEqual(frame.samples, [0.25, -0.25, 0.5, -0.5])
-        XCTAssertEqual(frame.sampleRate, 48_000)
-        XCTAssertEqual(frame.channelCount, 2)
-        XCTAssertEqual(frame.frameCount, 2)
-        XCTAssertEqual(frame.deliveryUptimeNanoseconds, 123)
+        #expect(frame.samples == [0.25, -0.25, 0.5, -0.5])
+        #expect(frame.sampleRate == 48_000)
+        #expect(frame.channelCount == 2)
+        #expect(frame.frameCount == 2)
+        #expect(frame.deliveryUptimeNanoseconds == 123)
     }
 }
+

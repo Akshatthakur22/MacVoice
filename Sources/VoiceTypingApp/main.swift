@@ -82,7 +82,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var shortcutDisplay = "⌃⌥Space"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        removeRetiredPolishingModel()
         let savedShortcut = UserDefaults.standard.dictionary(forKey: "shortcut")
         if let savedShortcut {
             shortcutDisplay = savedShortcut["display"] as? String ?? "⌃⌥Space"
@@ -125,17 +124,6 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 setStatus("The saved and default shortcuts are unavailable. Open Shortcut settings after resolving the conflict.")
             }
-        }
-    }
-
-    private func removeRetiredPolishingModel() {
-        let legacyDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Typer/MLX", isDirectory: true)
-        guard FileManager.default.fileExists(atPath: legacyDir.path) else { return }
-        do {
-            try FileManager.default.removeItem(at: legacyDir)
-        } catch {
-            NSLog("MacVoice could not remove retired MLX directory: %@", error.localizedDescription)
         }
     }
 
@@ -377,7 +365,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
         let aboutTitle = NSTextField(labelWithString: "Speak. Type. Done.")
         aboutTitle.font = .systemFont(ofSize: 17, weight: .semibold)
-        let aboutText = NSTextField(wrappingLabelWithString: "MacVoice is a local-first voice typing utility. Audio is processed completely on-device in memory during dictation. Verbatim sends confirmed recognition directly to TypingCore. Polished uses high-performance native Swift cleanup. MacVoice never sends your audio to cloud servers and never stores transcript histories.\n\nRequires macOS 26 or later.")
+        let aboutText = NSTextField(wrappingLabelWithString: "MacVoice is a local-first voice typing utility. Audio is processed completely on-device in memory during dictation. Verbatim sends confirmed recognition directly to TypingCore. Polished uses high-performance native Swift cleanup. MacVoice never sends your audio to cloud servers and never stores transcript histories.\n\nRequires macOS 15 or later.")
         aboutText.font = .systemFont(ofSize: 13)
         aboutText.textColor = .secondaryLabelColor
         aboutText.maximumNumberOfLines = 12
@@ -619,7 +607,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         if let currentSession = self.session {
             currentState = await currentSession.state
             try Task.checkCancellation()
-            if currentState == .listening || currentState == .starting {
+            if currentState == .listening || currentState == .starting || currentState == .stopping {
                 await currentSession.stop()
                 return
             }
@@ -658,8 +646,11 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         }
         do {
             try await activeSession.start()
+        } catch VoiceTypingSessionError.invalidState {
+            // Hotkey toggled rapidly while session was in transition; safely ignore without destroying handles
+            return
         } catch {
-            // Re-arm session on failure so subsequent attempts create fresh recognizer handles
+            // Re-arm session on genuine failure so subsequent attempts create fresh recognizer handles
             self.session = nil
             self.recognizer = nil
             throw error
@@ -797,7 +788,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let recognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
         let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .smartChatAware)
         let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? PolishingMode.polished.rawValue) ?? .polished
-        let polisher = NativeSwiftTranscriptPolisher()
+        let polisher = NativeSwiftTranscriptPolisher(locale: locale)
         let session = VoiceTypingSession(
             audioCapture: AudioCapture(), recognizer: recognizer, typingEngine: engine,
             polisher: polisher, polishingMode: mode

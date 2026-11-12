@@ -1,9 +1,9 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
     name: "TypingCore",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v15)],
     products: [
         .library(name: "TypingCore", targets: ["TypingCore"]),
         .library(name: "VoiceTypingCore", targets: ["VoiceTypingCore"]),
@@ -20,7 +20,14 @@ let package = Package(
         .testTarget(
             name: "TypingCoreTests",
             dependencies: ["TypingCore", "VoiceTypingCore"],
-            path: "Tests/TypingCoreTests"
+            path: "Tests/TypingCoreTests",
+            swiftSettings: [
+                .unsafeFlags([
+                    "-Xfrontend", "-load-plugin-library",
+                    "-Xfrontend", "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib"
+                ])
+            ]
         )
-    ]
+    ],
+    swiftLanguageModes: [.v5]
 )

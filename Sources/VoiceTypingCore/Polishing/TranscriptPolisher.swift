@@ -14,9 +14,21 @@ public struct PassthroughTranscriptPolisher: TranscriptPolisher {
 /// Cleans filler words, removes stutters, capitalizes sentences, fixes contractions,
 /// and handles natural line breaks in < 1 ms with 0 MB additional RAM.
 public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
-    public init() {}
+    public let locale: Locale
+    public init(locale: Locale = Locale.current) {
+        self.locale = locale
+    }
+
+    private var isEnglish: Bool {
+        let lang = locale.language.languageCode?.identifier.lowercased() ?? "en"
+        return lang == "en"
+    }
 
     private static let fillers: Set<String> = ["um", "uh", "erm", "ah"]
+    private static let legitimateRepeats: Set<String> = [
+        "that", "had", "is", "do", "no", "very", "bye", "many",
+        "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "zero"
+    ]
     private static let contractions: [String: String] = [
         "dont": "don't", "cant": "can't", "wont": "won't",
         "didnt": "didn't", "isnt": "isn't", "arent": "aren't",
@@ -30,11 +42,13 @@ public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
 
         var text = transcript
 
-        // 1. Explicit voice navigation commands only
-        text = text.replacingOccurrences(of: "(?i)\\s*\\b(?:shift enter|shift return|soft return|soft break)\\b\\s*", with: "\u{2028}", options: .regularExpression)
-        text = text.replacingOccurrences(of: "(?i)\\s*\\b(?:new paragraph|next paragraph|paragraph break)\\b\\s*", with: "\n\n", options: .regularExpression)
-        text = text.replacingOccurrences(of: "(?i)\\s*\\b(?:switch to next line|go to next line|move to next line|move to the next line|new line|next line|line break)\\b\\s*", with: "\n", options: .regularExpression)
-        text = text.replacingOccurrences(of: "(?i)\\bbullet point\\s+", with: "\n- ", options: .regularExpression)
+        // 1. Explicit voice navigation commands (for English dictation)
+        if isEnglish {
+            text = text.replacingOccurrences(of: "(?i)\\s*\\b(?:shift enter|shift return|soft return|soft break)\\b\\s*", with: "\u{2028}", options: .regularExpression)
+            text = text.replacingOccurrences(of: "(?i)\\s*\\b(?:new paragraph|next paragraph|paragraph break)\\b\\s*", with: "\n\n", options: .regularExpression)
+            text = text.replacingOccurrences(of: "(?i)\\s*\\b(?:switch to next line|go to next line|move to next line|move to the next line|new line|next line|line break)\\b\\s*", with: "\n", options: .regularExpression)
+            text = text.replacingOccurrences(of: "(?i)\\bbullet point\\s+", with: "\n- ", options: .regularExpression)
+        }
 
         // 2. Clean fillers, repeated stutters, contractions, and solo pronoun 'I'
         let lines = text.components(separatedBy: "\n")
@@ -51,21 +65,23 @@ public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
                     if !rawWord.isEmpty { cleanedWords.append(rawWord) }
                     continue
                 }
-                if Self.fillers.contains(stripped) {
+                if isEnglish && Self.fillers.contains(stripped) {
                     continue
                 }
-                if stripped == lastWordLower && stripped.count > 1 {
+                if stripped == lastWordLower && stripped.count > 1 && !Self.legitimateRepeats.contains(stripped) {
                     continue
                 }
                 lastWordLower = stripped
 
                 var word = rawWord
-                if stripped == "i" {
-                    word = rawWord.replacingOccurrences(of: "i", with: "I")
-                } else if let fixed = Self.contractions[stripped] {
-                    let leadingPunct = rawWord.prefix(while: { $0.isPunctuation })
-                    let trailingPunct = rawWord.reversed().prefix(while: { $0.isPunctuation }).reversed()
-                    word = String(leadingPunct) + fixed + String(trailingPunct)
+                if isEnglish {
+                    if stripped == "i" {
+                        word = rawWord.replacingOccurrences(of: "i", with: "I")
+                    } else if let fixed = Self.contractions[stripped] {
+                        let leadingPunct = rawWord.prefix(while: { $0.isPunctuation })
+                        let trailingPunct = rawWord.reversed().prefix(while: { $0.isPunctuation }).reversed()
+                        word = String(leadingPunct) + fixed + String(trailingPunct)
+                    }
                 }
                 cleanedWords.append(word)
             }
@@ -113,119 +129,6 @@ public struct NativeSwiftTranscriptPolisher: TranscriptPolisher {
 public enum PolishingMode: String, CaseIterable, Sendable {
     case verbatim
     case polished
-}
-
-/// Local persistent MLX-LM worker. The worker loads a model once and exchanges
-/// one JSON request/response per line. It never contacts an inference service.
-public actor LocalMLXTranscriptPolisher: TranscriptPolisher {
-    private static let modelKey = "qwen025"
-    private static let modelRepository = "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
-    private static let modelRevision = "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
-    private var process: Process?
-    private var input: FileHandle?
-    private var output: FileHandle?
-    private var bufferedOutput = Data()
-
-    public init() {}
-
-    public func isInstalled() -> Bool {
-        let root = Self.installRoot
-        return FileManager.default.isExecutableFile(atPath: root.appendingPathComponent("venv/bin/python3").path)
-            && FileManager.default.fileExists(atPath: root.appendingPathComponent("models/\(Self.modelKey)/config.json").path)
-    }
-
-    public func polish(_ transcript: String) async throws -> String {
-        guard !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return transcript }
-        try startWorkerIfNeeded()
-        guard let input, let output else { throw PolisherError.workerUnavailable }
-        let request: [String: String] = ["transcript": transcript, "model": Self.modelRepository]
-        let data = try JSONSerialization.data(withJSONObject: request)
-        try input.write(contentsOf: data + Data([0x0A]))
-
-        return try await withThrowingTaskGroup(of: String.self) { group in
-            group.addTask { try await self.readResponse(from: output) }
-            group.addTask {
-                try await Task.sleep(for: .seconds(12))
-                await self.stop()
-                throw PolisherError.timedOut
-            }
-            guard let result = try await group.next() else { throw PolisherError.invalidResponse }
-            group.cancelAll()
-            return try PolisherOutputValidator.validate(result, original: transcript)
-        }
-    }
-
-    public func stop() {
-        try? input?.write(contentsOf: Data("{\"command\":\"shutdown\"}\n".utf8))
-        process?.terminate()
-        process = nil
-        input = nil
-        output = nil
-        bufferedOutput.removeAll()
-    }
-
-    private static var installRoot: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Typer/MLX", isDirectory: true)
-    }
-
-    private func startWorkerIfNeeded() throws {
-        if process?.isRunning == true { return }
-        let root = Self.installRoot
-        let python = root.appendingPathComponent("venv/bin/python3").path
-        let bundledScript = Bundle.main.resourceURL?.appendingPathComponent("mlx_worker.py")
-        let sourceRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let sourceScript = sourceRoot.appendingPathComponent("Resources/mlx_worker.py")
-        let installedScript = root.appendingPathComponent("mlx_worker.py")
-        let scriptURL = [bundledScript, Optional(sourceScript), Optional(installedScript)]
-            .compactMap { $0 }.first(where: { FileManager.default.fileExists(atPath: $0.path) }) ?? installedScript
-        guard FileManager.default.isExecutableFile(atPath: python),
-              FileManager.default.fileExists(atPath: scriptURL.path) else { throw PolisherError.notInstalled }
-        let child = Process()
-        child.executableURL = URL(fileURLWithPath: python)
-        child.arguments = [scriptURL.path, "--model", Self.modelRepository, "--revision", Self.modelRevision,
-                           "--model-dir", root.appendingPathComponent("models/\(Self.modelKey)").path]
-        let stdin = Pipe(), stdout = Pipe(), stderr = Pipe()
-        child.standardInput = stdin
-        child.standardOutput = stdout
-        child.standardError = stderr
-        child.environment = ProcessInfo.processInfo.environment.merging([
-            "HF_HUB_OFFLINE": "1", "HF_HUB_DISABLE_TELEMETRY": "1"
-        ]) { _, new in new }
-        try child.run()
-        process = child
-        input = stdin.fileHandleForWriting
-        output = stdout.fileHandleForReading
-        // Drain diagnostics to avoid a full stderr pipe stalling inference.
-        DispatchQueue.global(qos: .utility).async { _ = stderr.fileHandleForReading.readDataToEndOfFile() }
-    }
-
-    private func readResponse(from handle: FileHandle) async throws -> String {
-        try await Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self else { throw PolisherError.workerUnavailable }
-            return try await self.readLine(from: handle)
-        }.value
-    }
-
-    private func readLine(from handle: FileHandle) throws -> String {
-        while true {
-            if let newline = bufferedOutput.firstIndex(of: 0x0A) {
-                let line = bufferedOutput.prefix(upTo: newline)
-                bufferedOutput.removeSubrange(...newline)
-                guard let object = try JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else {
-                    throw PolisherError.invalidResponse
-                }
-                if object["ready"] as? Bool == true { continue }
-                if let message = object["error"] as? String { throw PolisherError.workerFailed(message) }
-                guard let text = object["text"] as? String else { throw PolisherError.invalidResponse }
-                return text
-            }
-            guard let byte = try handle.read(upToCount: 1), !byte.isEmpty else { throw PolisherError.workerUnavailable }
-            bufferedOutput.append(byte)
-        }
-    }
-
 }
 
 /// Conservative post-generation checks; this rejects clear responses/rewrites,

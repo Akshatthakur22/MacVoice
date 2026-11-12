@@ -1,3 +1,4 @@
+import Foundation
 import VoiceTypingCore
 
 @main
@@ -35,14 +36,21 @@ enum VoiceTypingCoreChecks {
 
             let bulletResult = try await nativePolisher.polish("grocery items bullet point milk bullet point eggs")
             expect(bulletResult, "Grocery items\n- Milk\n- Eggs")
+
+            let legitimateRepeatResult = try await nativePolisher.polish("he said that that was true and had had no doubt")
+            expect(legitimateRepeatResult, "He said that that was true and had had no doubt")
+
+            let nonEnglishPolisher = NativeSwiftTranscriptPolisher(locale: Locale(identifier: "fr-FR"))
+            let frenchResult = try await nonEnglishPolisher.polish("bonjour a tous")
+            expect(frenchResult, "Bonjour a tous")
             if #available(macOS 26.0, *) {
                 let r1 = AppleSpeechAnalyzerRecognizer.reconcileFinalText(
                     currentConfirmed: "hello world ",
                     segmentBase: "",
                     finalText: "Hello world. How are you?"
                 )
-                expect(r1.hasPrefix("hello world "), true)
-                expect(r1, "hello world How are you?")
+                expect(r1.hasPrefix("hello world"), true)
+                expect(r1, "hello world. How are you?")
 
                 let r2 = AppleSpeechAnalyzerRecognizer.reconcileFinalText(
                     currentConfirmed: "hello world ",
@@ -60,14 +68,6 @@ enum VoiceTypingCoreChecks {
                 )
                 expect(r3.hasPrefix("the world, this is a test or speech dictation in "), true)
                 expect(r3, "the world, this is a test or speech dictation in McVoice.")
-            }
-            if CommandLine.arguments.contains("--mlx") {
-                let polisher = LocalMLXTranscriptPolisher()
-                let start = ContinuousClock.now
-                let result = try await polisher.polish("i think we should ship it next week")
-                print("Local MLX result: \(result)")
-                print("Local MLX phrase time: \(start.duration(to: .now))")
-                await polisher.stop()
             }
             print("VoiceTypingCore checks passed")
         }
