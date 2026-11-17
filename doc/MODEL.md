@@ -47,22 +47,13 @@ finalization latency, WER/CER, punctuation, process CPU, peak RSS, and energy
 over repeated runs on the target Mac. Keep provider and app latency separate;
 also measure TypingCore event submission independently from target insertion.
 
-## Optional transcript polisher implementation
+## Transcript polisher
 
-The voice app has one optional text cleanup model, separate from speech recognition.
-When the user selects Polished mode and chooses its setup action, MacVoice installs
-`mlx-community/Qwen2.5-0.5B-Instruct-4bit` (revision
-`a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3`) through MLX-LM. Verbatim mode does not
-start the model worker. The [Qwen MLX artifact](https://huggingface.co/mlx-community/Qwen2.5-0.5B-Instruct-4bit)
-publishes an Apache-2.0 license.
-An explicit setup action installs pinned `mlx-lm==0.31.3`, `mlx==0.32.3`,
-`transformers==5.17.0`, and `huggingface_hub==1.5.0` into a Python 3.10–3.13
-virtual environment, then downloads the Qwen checkpoint to the user's Application
-Support directory. In this environment the Qwen model occupied about 276 MiB and the
-Python environment occupied 408 MiB. A persistent local Python process
-loads the model once and accepts newline-delimited JSON requests from Swift over stdin/stdout.
-No HTTP server or cloud inference service is used. Local results and their limits
-are recorded in `PERFORMANCE.md`.
+Polished mode uses `NativeSwiftTranscriptPolisher`, a deterministic in-process
+Swift cleanup step. There is no language model, Python runtime, download, or
+network call; each phrase is processed in well under a millisecond. Its rules
+and the ordinary-speech cases each rule must not change are covered by
+`Tests/TypingCoreTests/PolishingTests.swift`.
 
 ## Primary references
 

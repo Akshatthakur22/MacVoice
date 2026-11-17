@@ -94,6 +94,7 @@ struct SessionLifecycleTests {
         state = await session.state
         #expect(state == .listening)
         await session.stop()
+        #expect(recognizer.stopCount == 2)
     }
 
     @Test func delayedPriorSessionErrorCannotFailRestartedSession() async throws {
@@ -316,9 +317,12 @@ private final class LifecycleSpeechRecognizer: SpeechRecognizer {
         stopCount += 1
         ordering += 1
         stopOrder = ordering
+        // Only the first stop is held open; later sessions stop normally so a
+        // test can restart and cleanly stop after resuming the first teardown.
+        let shouldSuspend = suspendStop && stopCount == 1
         lock.unlock()
         onStopStarted?()
-        if suspendStop {
+        if shouldSuspend {
             await withCheckedContinuation { continuation in stopContinuation = continuation }
         }
     }

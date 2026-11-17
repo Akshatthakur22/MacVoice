@@ -27,17 +27,18 @@ MacVoice is an independent, native macOS utility engineered for software enginee
 
 Focus any text box in VS Code, Slack, Word, Notes, or Safari, press <kbd>Control</kbd> + <kbd>Option</kbd> + <kbd>Space</kbd>, and speak. MacVoice synthesizes genuine physical keyboard events directly into the macOS WindowServer at your cursor position.
 
-Unlike common dictation software that dumps transcribed text into your clipboard (`NSPasteboard`) and simulates `Cmd+V`, MacVoice dispatches authentic hardware keypresses (`CGEvent` directly posted to `.cghidEventTap`). It **bypasses copy-paste restrictions on secure forms**, never overwrites your clipboard, and processes 100% of audio locally in RAM without cloud dependencies.
+Unlike common dictation software that dumps transcribed text into your clipboard (`NSPasteboard`) and simulates `Cmd+V`, MacVoice dispatches authentic hardware keypresses (`CGEvent` directly posted to `.cghidEventTap`). It **works in fields that block paste**, never overwrites your clipboard, and processes 100% of audio locally in RAM without cloud dependencies.
 
 ---
 
 ## ⚡ Key Architectural Capabilities
 
-- ⌨️ **Simulated Hardware Typing:** Emits Quartz HID `.cghidEventTap` key-down/up pairs. Works inside secure banking portals, proctored exams, and remote desktops (Citrix/VDI) where paste is blocked by `onpaste="return false;"`.
-- 🚀 **Sub-150ms Live Streaming:** Dispatches confirmed words progressively to the active text field while speaking. Zero batch delay.
-- 🪄 **In-Process Swift Polish (<0.1ms):** Strips vocal hesitations ("um", "uh"), normalizes unpunctuated contractions ("dont" → "don't"), and formats capitalization in resident memory with zero extra RAM.
+- ⌨️ **Simulated Hardware Typing:** Emits Quartz HID `.cghidEventTap` key-down/up pairs, so it works in web forms where paste is blocked by `onpaste="return false;"`. Password fields and other Secure Input contexts are intentionally not typed into.
+- 🚀 **Live Streaming (Verbatim mode):** Dispatches confirmed words progressively to the active text field while speaking. Polished mode types each sentence as soon as it is finalized.
+- 🪄 **In-Process Swift Polish (<1ms, no AI model):** Strips hesitations ("um", "uh") and stutters, restores apostrophes ("dont" → "don't"), capitalizes sentences while leaving URLs, decimals and words like "iPhone" intact, and follows spoken commands: "new line", "new paragraph", "bullet point", "comma", "question mark", "period".
+- ␣ **Smart Spacing:** Reads only the character before your cursor (via Accessibility, never stored) so back-to-back dictations get a separating space.
 - 💬 **Chat-Safe Line Breaks:** Bundle introspection detects active messaging apps (Slack, WhatsApp, Teams, Discord, Telegram) and automatically sends `Shift + Return` on "new line" to prevent accidental message transmission.
-- 🔒 **100% Air-Gapped Audio:** Integrates directly with Apple's modern on-device `SpeechAnalyzer` framework. Zero network sockets. Zero telemetry.
+- 🔒 **On-Device Audio:** Integrates directly with Apple's on-device `SpeechAnalyzer` framework. Audio never leaves your Mac and there is zero telemetry. (macOS downloads Apple's speech model once on first use.)
 - 🪶 **784 KB Package, ~60 MB RAM:** Pure native Swift compiled for Apple Silicon (arm64). Zero Python, zero Electron, zero local LLM downloads.
 
 ---

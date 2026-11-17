@@ -59,6 +59,10 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var shortcut: GlobalShortcut?
     private var session: VoiceTypingSession?
     private var currentConfiguredLocale: Locale?
+    /// System locale identifier the current session was prepared for. The
+    /// configured speech locale may differ (e.g. en_IN system using an installed
+    /// en_US model), so compare against this to decide whether to rebuild.
+    private var preparedForSystemLocaleID: String?
     private let sessionStartCoordinator = SessionStartCoordinator()
     private var recognizer: AppleSpeechAnalyzerRecognizer?
     private var previousState: VoiceTypingState = .idle
@@ -365,7 +369,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
         let aboutTitle = NSTextField(labelWithString: "Speak. Type. Done.")
         aboutTitle.font = .systemFont(ofSize: 17, weight: .semibold)
-        let aboutText = NSTextField(wrappingLabelWithString: "MacVoice is a local-first voice typing utility. Audio is processed completely on-device in memory during dictation. Verbatim sends confirmed recognition directly to TypingCore. Polished uses high-performance native Swift cleanup. MacVoice never sends your audio to cloud servers and never stores transcript histories.\n\nRequires macOS 15 or later.")
+        let aboutText = NSTextField(wrappingLabelWithString: "MacVoice is a local-first voice typing utility. Audio is processed completely on-device in memory during dictation. Verbatim sends confirmed recognition directly to TypingCore. Polished uses high-performance native Swift cleanup. MacVoice never sends your audio to cloud servers and never stores transcript histories.\n\nRequires macOS 26 or later.")
         aboutText.font = .systemFont(ofSize: 13)
         aboutText.textColor = .secondaryLabelColor
         aboutText.maximumNumberOfLines = 12
@@ -636,7 +640,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
         // If previously failed (e.g. Try Again clicked), or session is nil, or locale changed:
         // thoroughly prepare speech assets and build a clean, fresh session.
-        if wasFailed || self.session == nil || self.currentConfiguredLocale?.identifier != Locale.current.identifier {
+        if wasFailed || self.session == nil || self.preparedForSystemLocaleID != Locale.current.identifier {
             setStatus("Preparing on-device speech for \(Locale.current.identifier)…")
             try await prepareSpeechAssetsAndSession()
         }
@@ -672,6 +676,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         // 1. If an exact match is already installed on disk (e.g. en_IN), use it immediately!
         if let exactInstalled = installedLocales.first(where: { Self.normalizedLocaleID($0.identifier) == targetID }) {
             await configureSession(locale: exactInstalled)
+            preparedForSystemLocaleID = systemLocale.identifier
             return
         }
 
@@ -681,6 +686,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         }
         if let preferred = installedSameLanguage.first {
             await configureSession(locale: preferred)
+            preparedForSystemLocaleID = systemLocale.identifier
             return
         }
 
@@ -689,6 +695,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let candidateRecognizer = AppleSpeechAnalyzerRecognizer(locale: systemLocale)
         try await candidateRecognizer.installAssets()
         await configureSession(locale: systemLocale)
+        preparedForSystemLocaleID = systemLocale.identifier
     }
 
     private static func normalizedLocaleID(_ identifier: String) -> String {
@@ -724,10 +731,17 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     private func startAccessibilityPolling() {
         accessibilityPollTimer?.invalidate()
+        let deadline = Date().addingTimeInterval(120)
         accessibilityPollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
             Task { @MainActor [weak self] in
                 guard let self else {
                     timer.invalidate()
+                    return
+                }
+                if Date() > deadline {
+                    timer.invalidate()
+                    self.accessibilityPollTimer = nil
+                    self.updateAccessibilityStatusUI()
                     return
                 }
                 if CGPreflightPostEventAccess() {
@@ -785,9 +799,9 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func configureSession(locale: Locale = Locale.current) async {
-        let recognizer = AppleSpeechAnalyzerRecognizer(locale: locale)
-        let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .smartChatAware)
         let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? PolishingMode.polished.rawValue) ?? .polished
+        let recognizer = AppleSpeechAnalyzerRecognizer(locale: locale, streamsVolatileWords: mode == .verbatim)
+        let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .smartChatAware, smartLeadingSpace: true)
         let polisher = NativeSwiftTranscriptPolisher(locale: locale)
         let session = VoiceTypingSession(
             audioCapture: AudioCapture(), recognizer: recognizer, typingEngine: engine,
@@ -807,18 +821,18 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     private func updatePolisherStatus() {
         guard polisherStatus != nil else { return }
-        polisherStatus.stringValue = "Polished mode is built-in. Native Swift cleanup runs in-process with zero latency and zero memory overhead."
+        polisherStatus.stringValue = "Polished mode is built in. Cleanup runs on your Mac in under a millisecond, with no AI model and no network."
     }
 
     private func updateModeUI() {
         guard modePicker != nil else { return }
         let polished = modePicker.indexOfSelectedItem == 1
         modeSummary?.stringValue = polished
-            ? "Selected: Polished (Default) · cleans fillers, auto-formats lists, and handles smart punctuation."
+            ? "Selected: Polished (Default) · removes fillers, fixes capitalization, and follows spoken commands."
             : "Selected: Verbatim · sends recognized words directly with minimal changes."
         modeExplanation.stringValue = polished
-            ? "Removes fillers (um, uh), collapses stutters, auto-formats numbered & bullet lists, and responds to spoken punctuation (new line, comma, period) in real time."
-            : "Types recognized words directly with minimal changes."
+            ? "Removes fillers (um, uh), collapses stutters (\"the the\"), adds missing apostrophes, and capitalizes sentences. Say \"new line\", \"new paragraph\", \"bullet point\", \"comma\", \"question mark\", or end with \"period\". Text is typed one sentence at a time."
+            : "Types recognized words live, as you speak, with no changes."
         polisherSection.isHidden = !polished
         polisherSection.setAccessibilityElement(true)
         polisherSection.setAccessibilityLabel("Polished mode cleanup settings")

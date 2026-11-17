@@ -12,11 +12,13 @@ public enum VoiceTypingState: Equatable, Sendable {
 public enum VoiceTypingSessionError: Error, LocalizedError {
     case invalidState(VoiceTypingState)
     case audioBufferOverrun
+    case polishingBacklog
 
     public var errorDescription: String? {
         switch self {
         case .invalidState(let state): return "Cannot start voice typing while in state \(state)."
         case .audioBufferOverrun: return "Audio processing fell behind microphone capture; the session was stopped to avoid silently dropping speech."
+        case .polishingBacklog: return "Text cleanup fell behind speech; dictation stopped after typing everything recognized so far."
         }
     }
 }
@@ -75,6 +77,7 @@ public actor VoiceTypingSession {
         let ticket = generation
         setState(.starting)
         reconciler.reset()
+        typingOutput.beginDictation()
         if polishingMode == .polished {
             await polishingCoordinator.begin()
             await polishingCoordinator.setErrorHandler { [weak self] error in
@@ -84,7 +87,7 @@ public actor VoiceTypingSession {
                 Task { await self?.fail(error, sessionGeneration: ticket) }
             }
             await polishingCoordinator.setQueuePressureHandler { [weak self] in
-                Task { await self?.fail(VoiceTypingSessionError.audioBufferOverrun, sessionGeneration: ticket) }
+                Task { await self?.fail(VoiceTypingSessionError.polishingBacklog, sessionGeneration: ticket) }
             }
         }
 

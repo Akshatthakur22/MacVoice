@@ -11,6 +11,7 @@ public actor PolishingCoordinator {
     private var pending: [String] = []
     private var processing = false
     private var forceVerbatim = false
+    private var lastCommittedCharacter: Character?
     private var generation: UInt64 = 0
     private var drainWaiters: [CheckedContinuation<Void, Never>] = []
     public var onError: ((Error) -> Void)?
@@ -23,7 +24,13 @@ public actor PolishingCoordinator {
         self.mode = mode
     }
 
-    public func begin() { generation &+= 1; buffer = PhraseBuffer(); pending.removeAll(); forceVerbatim = false }
+    public func begin() {
+        generation &+= 1
+        buffer = PhraseBuffer()
+        pending.removeAll()
+        forceVerbatim = false
+        lastCommittedCharacter = nil
+    }
     public func setQueuePressureHandler(_ handler: (() -> Void)?) { onQueuePressure = handler }
     public func setErrorHandler(_ handler: ((Error) -> Void)?) { onError = handler }
     public func setTypingFailureHandler(_ handler: ((Error) -> Void)?) { onTypingFailure = handler }
@@ -75,6 +82,11 @@ public actor PolishingCoordinator {
         }
         guard ticket == generation else { processing = false; processNextIfNeeded(); return }
         if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { output = phrase }
+        // After a spoken "new line", the next phrase must not start with a space.
+        if let last = lastCommittedCharacter, last == "\n" || last == "\u{2028}" {
+            output = String(output.drop(while: { $0 == " " || $0 == "\t" }))
+        }
+        if let last = output.last { lastCommittedCharacter = last }
         engine.append(output, completion: { [weak self] result in
             if case .failure(let error) = result { Task { await self?.onTypingFailure?(error) } }
         })

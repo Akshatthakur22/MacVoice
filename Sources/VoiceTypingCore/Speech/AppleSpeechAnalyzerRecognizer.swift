@@ -5,19 +5,30 @@ import Speech
 
 /// Native on-device recognizer available on macOS 26 and later. Speech model
 /// assets are managed by macOS; call `installAssets()` explicitly while online
-/// if they are not already installed. `start()` never initiates a download.
+/// if they are not already installed. If no matching model is on disk,
+/// `start()` asks macOS to install it before recognition begins.
 @available(macOS 26.0, *)
 public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
-    public var onUpdate: ((SpeechRecognitionUpdate) -> Void)?
-    public var onError: ((Error) -> Void)?
+    // Callbacks and transcript state are touched by the result task, the
+    // session's audio task, and stop(); a lock keeps those accesses serialized.
+    private let stateLock = NSLock()
+    private var updateHandler: ((SpeechRecognitionUpdate) -> Void)?
+    private var errorHandler: ((Error) -> Void)?
+    private var assembler: ProgressiveTranscriptAssembler
+
+    public var onUpdate: ((SpeechRecognitionUpdate) -> Void)? {
+        get { stateLock.withLock { updateHandler } }
+        set { stateLock.withLock { updateHandler = newValue } }
+    }
+    public var onError: ((Error) -> Void)? {
+        get { stateLock.withLock { errorHandler } }
+        set { stateLock.withLock { errorHandler = newValue } }
+    }
 
     private let locale: Locale
     private var analyzer: SpeechAnalyzer?
     private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
     private var resultTask: Task<Void, Never>?
-    private var confirmedText = ""
-    private var segmentBase = ""
-    private var segmentCommitted = ""
     private var outputFormat: AVAudioFormat?
     private var converter: AVAudioConverter?
     private var converterInputFormat: AVAudioFormat?
@@ -27,8 +38,12 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     private var outputSampleOffset: Int64 = 0
     private var running = false
 
-    public init(locale: Locale) {
+    /// - Parameter streamsVolatileWords: Type completed words before the
+    ///   recognizer finalizes a segment (live Verbatim typing). Pass false for
+    ///   Polished mode to keep final punctuation exact.
+    public init(locale: Locale, streamsVolatileWords: Bool = true) {
         self.locale = locale
+        self.assembler = ProgressiveTranscriptAssembler(commitsVolatileWords: streamsVolatileWords)
     }
 
     /// Explicitly installs the system-managed speech assets. This may download
@@ -152,9 +167,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         self.analyzer = analyzer
         self.outputFormat = outputFormat
         self.inputContinuation = continuation
-        confirmedText = ""
-        segmentBase = ""
-        segmentCommitted = ""
+        stateLock.withLock { assembler.reset() }
         outputSampleOffset = 0
         running = true
 
@@ -200,9 +213,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
                 self.analyzer = retryAnalyzer
                 self.outputFormat = retryOutputFormat
                 self.inputContinuation = retryContinuation
-                confirmedText = ""
-                segmentBase = ""
-                segmentCommitted = ""
+                stateLock.withLock { assembler.reset() }
                 outputSampleOffset = 0
                 running = true
 
@@ -359,11 +370,8 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         }
         await resultTask?.value
         resultTask = nil
-        onUpdate?(SpeechRecognitionUpdate(
-            hypothesis: confirmedText,
-            confirmedTranscript: confirmedText,
-            isFinal: true
-        ))
+        let finalUpdate = stateLock.withLock { assembler.finalUpdate }
+        onUpdate?(finalUpdate)
         analyzer = nil
         converter = nil
         converterInputFormat = nil
@@ -371,175 +379,12 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         cachedInputBuffer = nil
         cachedConvertedBuffer = nil
         outputFormat = nil
-        segmentBase = ""
-        segmentCommitted = ""
     }
 
     private func receive(_ result: SpeechTranscriber.Result) {
         let text = String(result.text.characters)
-        if result.isFinal {
-            let full = Self.reconcileFinalText(
-                currentConfirmed: confirmedText,
-                segmentBase: segmentBase,
-                finalText: text
-            )
-            confirmedText = full
-            segmentBase = full
-            segmentCommitted = ""
-            onUpdate?(SpeechRecognitionUpdate(
-                hypothesis: confirmedText,
-                confirmedTranscript: confirmedText,
-                isFinal: false
-            ))
-        } else {
-            // Live progressive streaming: commit completed words as soon as a boundary is crossed
-            if let lastSpace = text.lastIndex(where: { $0.isWhitespace }) {
-                let stablePortion = String(text[...lastSpace])
-                if stablePortion.hasPrefix(segmentCommitted) && stablePortion.count > segmentCommitted.count {
-                    segmentCommitted = stablePortion
-                    confirmedText = segmentBase + segmentCommitted
-                    onUpdate?(SpeechRecognitionUpdate(
-                        hypothesis: segmentBase + text,
-                        confirmedTranscript: confirmedText,
-                        isFinal: false
-                    ))
-                    return
-                }
-            }
-            onUpdate?(SpeechRecognitionUpdate(
-                hypothesis: segmentBase + text,
-                confirmedTranscript: confirmedText,
-                isFinal: false
-            ))
-        }
-    }
-
-    /// Reconciles finalized segment text with whatever portion was already progressively streamed,
-    /// guaranteeing the append-only invariant required by TranscriptReconciler, preserving
-    /// sentence punctuation on previously streamed words, and preventing duplicate emissions.
-    public static func reconcileFinalText(
-        currentConfirmed: String,
-        segmentBase: String,
-        finalText: String
-    ) -> String {
-        let proposed = segmentBase + finalText
-        if proposed.hasPrefix(currentConfirmed) {
-            return proposed
-        }
-        let committedWords = currentConfirmed.dropFirst(segmentBase.count)
-            .split(whereSeparator: { $0.isWhitespace })
-        let finalWords = finalText.split(whereSeparator: { $0.isWhitespace })
-
-        let uncommittedWords = findUncommittedWords(
-            committedWords: Array(committedWords),
-            finalWords: Array(finalWords)
-        )
-
-        // Find trailing punctuation of the last matched word in finalWords
-        var trailingPunct = ""
-        if !finalWords.isEmpty {
-            let uncommittedCount = uncommittedWords.count
-            let lastMatchedIndex = finalWords.count - uncommittedCount - 1
-            if lastMatchedIndex >= 0 && lastMatchedIndex < finalWords.count {
-                let matchedWord = finalWords[lastMatchedIndex]
-                let punc = extractTrailingPunctuation(from: matchedWord)
-                let trimmed = currentConfirmed.trimmingCharacters(in: .whitespaces)
-                if !punc.isEmpty && !trimmed.hasSuffix(punc) {
-                    trailingPunct = punc
-                }
-            }
-        }
-
-        if !uncommittedWords.isEmpty {
-            let suffix = uncommittedWords.joined(separator: " ")
-            if !trailingPunct.isEmpty {
-                let base = currentConfirmed.hasSuffix(" ") ? String(currentConfirmed.dropLast()) : currentConfirmed
-                return base + trailingPunct + " " + suffix
-            } else {
-                let separator = (currentConfirmed.hasSuffix(" ") || currentConfirmed.isEmpty) ? "" : " "
-                return currentConfirmed + separator + suffix
-            }
-        } else {
-            if !trailingPunct.isEmpty {
-                let base = currentConfirmed.hasSuffix(" ") ? String(currentConfirmed.dropLast()) : currentConfirmed
-                return base + trailingPunct
-            } else {
-                return currentConfirmed
-            }
-        }
-    }
-
-    private static func extractTrailingPunctuation(from word: Substring) -> String {
-        var punc = ""
-        for char in word.reversed() {
-            if char.isPunctuation {
-                punc.insert(char, at: punc.startIndex)
-            } else {
-                break
-            }
-        }
-        return punc
-    }
-
-    public static func findUncommittedWords(
-        committedWords: [Substring],
-        finalWords: [Substring]
-    ) -> [Substring] {
-        if committedWords.isEmpty { return finalWords }
-        if finalWords.isEmpty { return [] }
-
-        func normalize(_ word: Substring) -> String {
-            word.lowercased().trimmingCharacters(in: .punctuationCharacters)
-        }
-
-        let normCommitted = committedWords.map { normalize($0) }
-        let normFinal = finalWords.map { normalize($0) }
-
-        // 1. Check if prefix of finalWords matches prefix of committedWords
-        var prefixMatch = 0
-        while prefixMatch < normCommitted.count && prefixMatch < normFinal.count {
-            if normCommitted[prefixMatch] == normFinal[prefixMatch] {
-                prefixMatch += 1
-            } else {
-                break
-            }
-        }
-
-        // If prefixMatch covers all committed words, any remaining final words are new
-        if prefixMatch == normCommitted.count {
-            return Array(finalWords[prefixMatch...])
-        }
-
-        // 2. Search for where the tail of committedWords aligns in finalWords (suffix matching)
-        let maxMatchLen = min(normCommitted.count, normFinal.count)
-        for window in stride(from: maxMatchLen, through: 1, by: -1) {
-            let committedTail = normCommitted[(normCommitted.count - window)...]
-            for finalStart in stride(from: normFinal.count - window, through: 0, by: -1) {
-                let finalSlice = normFinal[finalStart..<(finalStart + window)]
-                if committedTail.elementsEqual(finalSlice) {
-                    let uncommittedStart = finalStart + window
-                    if uncommittedStart < finalWords.count {
-                        return Array(finalWords[uncommittedStart...])
-                    } else {
-                        return []
-                    }
-                }
-            }
-        }
-
-        // 3. Fallback: If partial prefix matched, return words after prefixMatch
-        if prefixMatch > 0 {
-            return Array(finalWords[prefixMatch...])
-        }
-
-        // 4. Fallback: Search for the last recognized committed word in finalWords
-        if let lastCommittedWord = normCommitted.last,
-           let lastIndex = normFinal.lastIndex(of: lastCommittedWord),
-           lastIndex + 1 < finalWords.count {
-            return Array(finalWords[(lastIndex + 1)...])
-        }
-
-        return []
+        let update = stateLock.withLock { assembler.receive(text: text, isFinal: result.isFinal) }
+        onUpdate?(update)
     }
 
     public static func normalizedLocaleID(_ identifier: String) -> String {

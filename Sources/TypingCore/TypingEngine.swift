@@ -36,6 +36,13 @@ public protocol TypingOutput: AnyObject {
     func append(_ text: String, completion: ((Result<TypingReport, TypingError>) -> Void)?)
     func stop()
     func drain() async
+    /// Marks the start of a new dictation so the output can adapt to the text
+    /// already at the cursor. Optional; the default does nothing.
+    func beginDictation()
+}
+
+public extension TypingOutput {
+    func beginDictation() {}
 }
 
 private enum TypingControl: Error { case cancelled }
@@ -54,14 +61,28 @@ public final class TypingEngine: TypingOutput {
     private let interCharacterDelay: TimeInterval
     private let emitter = KeyboardEmitter()
     private let newlineBehavior: NewlineBehavior
+    private let smartLeadingSpace: Bool
+    private var needsLeadingContext = false
 
     /// - Parameter interCharacterDelay: Minimum delay between grapheme clusters.
     ///   Zero minimizes latency; a small positive value can help applications that
     ///   drop bursts. This is pacing for compatibility, not human simulation.
+    /// - Parameter smartLeadingSpace: When true, the first text of each
+    ///   dictation gets a leading space if the character before the caret is
+    ///   not already whitespace (so "done." + "Next" becomes "done. Next").
     public init(interCharacterDelay: TimeInterval = 0.005,
-                newlineBehavior: NewlineBehavior) {
+                newlineBehavior: NewlineBehavior,
+                smartLeadingSpace: Bool = false) {
         self.interCharacterDelay = max(0, interCharacterDelay)
         self.newlineBehavior = newlineBehavior
+        self.smartLeadingSpace = smartLeadingSpace
+    }
+
+    public func beginDictation() {
+        guard smartLeadingSpace else { return }
+        lock.lock()
+        needsLeadingContext = true
+        lock.unlock()
     }
 
     private var effectiveNewlineBehavior: NewlineBehavior {
@@ -96,7 +117,14 @@ public final class TypingEngine: TypingOutput {
         let chatKeywords = ["slack", "whatsapp", "discord", "telegram", "messenger", "signal", "teams"]
         if chatKeywords.contains(where: { bundleID.contains($0) }) { return true }
 
-        // Web chat detection: inspect frontmost window title via Accessibility (e.g. Slack Web, WhatsApp Web in Chrome/Safari)
+        // Web chat detection (Slack, WhatsApp Web…) only applies inside browsers;
+        // elsewhere a title like "slack_bot.py" must not change newline behavior.
+        let browserBundleIdentifiers: Set<String> = [
+            "com.apple.safari", "com.google.chrome", "com.google.chrome.canary", "org.mozilla.firefox",
+            "com.microsoft.edgemac", "com.brave.browser", "company.thebrowser.browser", "com.operasoftware.opera",
+            "com.vivaldi.vivaldi", "app.zen-browser.zen", "com.kagi.kagimacos"
+        ]
+        guard browserBundleIdentifiers.contains(bundleID) else { return false }
         let appElement = AXUIElementCreateApplication(frontmost.processIdentifier)
         var windowValue: AnyObject?
         if AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowValue) == .success,
@@ -151,6 +179,16 @@ public final class TypingEngine: TypingOutput {
                     DispatchQueue.main.async { completion(.success(TypingReport(eventPairsPosted: 0, timeToFirstEvent: nil))) }
                 }
                 return
+            }
+            var text = text
+            self.lock.lock()
+            let checkContext = self.needsLeadingContext && self.generation == ticket
+            if checkContext { self.needsLeadingContext = false }
+            self.lock.unlock()
+            if checkContext,
+               FocusedTextContext.needsLeadingSpace(
+                   after: FocusedTextContext.characterBeforeInsertionPoint(), before: text.first) {
+                text = " " + text
             }
             let result: Result<TypingReport, TypingError>
             if !CGPreflightPostEventAccess() {

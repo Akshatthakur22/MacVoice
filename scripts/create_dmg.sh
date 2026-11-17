@@ -45,7 +45,10 @@ xattr -cr "$APP_BUNDLE"
 echo "==> Signing MacVoice.app..."
 if [ -n "$SIGNING_IDENTITY" ]; then
   echo "--> Signing with Apple Developer ID: $SIGNING_IDENTITY"
-  codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$APP_BUNDLE"
+  # Hardened runtime blocks the microphone unless the audio-input entitlement is present.
+  codesign --force --deep --options runtime --timestamp \
+    --entitlements "$REPO_ROOT/Resources/MacVoice.entitlements" \
+    --sign "$SIGNING_IDENTITY" "$APP_BUNDLE"
 else
   echo "--> No Developer ID certificate found. Signing with clean ad-hoc signature for portable distribution..."
   codesign --force --deep --sign - "$APP_BUNDLE"
