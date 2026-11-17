@@ -11,7 +11,16 @@ public actor PolishingCoordinator {
     private var pending: [String] = []
     private var processing = false
     private var forceVerbatim = false
-    private var lastCommittedCharacter: Character?
+    private var insertion = InsertionContext.unknown
+    /// Text state this dictation has produced, used to decide whether the next
+    /// phrase starts a sentence and to restore after "scratch that".
+    private struct TypedState {
+        var lastCharacter: Character?
+        var lastVisibleCharacter: Character?
+        var hasTypedPhrase = false
+    }
+    private var typed = TypedState()
+    private var typedBeforeLastPhrase = TypedState()
     private var generation: UInt64 = 0
     private var drainWaiters: [CheckedContinuation<Void, Never>] = []
     public var onError: ((Error) -> Void)?
@@ -24,12 +33,14 @@ public actor PolishingCoordinator {
         self.mode = mode
     }
 
-    public func begin() {
+    public func begin(context: InsertionContext = .unknown) {
         generation &+= 1
         buffer = PhraseBuffer()
         pending.removeAll()
         forceVerbatim = false
-        lastCommittedCharacter = nil
+        insertion = context
+        typed = TypedState()
+        typedBeforeLastPhrase = TypedState()
     }
     public func setQueuePressureHandler(_ handler: (() -> Void)?) { onQueuePressure = handler }
     public func setErrorHandler(_ handler: ((Error) -> Void)?) { onError = handler }
@@ -72,26 +83,48 @@ public actor PolishingCoordinator {
     }
 
     private func process(_ phrase: String, ticket: UInt64) async {
-        var output = phrase
+        var result = PolishedPhrase(text: phrase)
         if !forceVerbatim {
-            do { output = try await polisher.polish(phrase) }
+            do { result = try await polisher.polishPhrase(phrase, context: polishContext()) }
             catch {
                 forceVerbatim = true
                 onError?(error)
             }
         }
         guard ticket == generation else { processing = false; processNextIfNeeded(); return }
-        if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { output = phrase }
+
+        if result.retractsPreviousPhrase && typed.hasTypedPhrase {
+            engine.retractLastAppend()
+            typed = typedBeforeLastPhrase
+            typed.hasTypedPhrase = false // one level of "scratch that"
+        }
+
+        var output = result.text
         // After a spoken "new line", the next phrase must not start with a space.
-        if let last = lastCommittedCharacter, last == "\n" || last == "\u{2028}" {
+        if let last = typed.lastCharacter, last == "\n" || last == "\u{2028}" {
             output = String(output.drop(while: { $0 == " " || $0 == "\t" }))
         }
-        if let last = output.last { lastCommittedCharacter = last }
-        engine.append(output, completion: { [weak self] result in
-            if case .failure(let error) = result { Task { await self?.onTypingFailure?(error) } }
-        })
+        if !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            typedBeforeLastPhrase = typed
+            typed.lastCharacter = output.last
+            typed.lastVisibleCharacter = output.last(where: { $0 != " " && $0 != "\t" })
+            typed.hasTypedPhrase = true
+            engine.append(output, completion: { [weak self] result in
+                if case .failure(let error) = result { Task { await self?.onTypingFailure?(error) } }
+            })
+        }
         processing = false
         processNextIfNeeded()
+    }
+
+    private func polishContext() -> PolishContext {
+        let startsSentence: Bool
+        if let last = typed.lastVisibleCharacter {
+            startsSentence = ".!?。！？।-\n\u{2028}".contains(last)
+        } else {
+            startsSentence = !insertion.continuesSentence
+        }
+        return PolishContext(startsSentence: startsSentence, isTerminal: insertion.isTerminal)
     }
 
     private func drain() async {

@@ -26,6 +26,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     }
 
     private let locale: Locale
+    private let contextualStrings: [String]
     private var analyzer: SpeechAnalyzer?
     private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
     private var resultTask: Task<Void, Never>?
@@ -41,8 +42,12 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     /// - Parameter streamsVolatileWords: Type completed words before the
     ///   recognizer finalizes a segment (live Verbatim typing). Pass false for
     ///   Polished mode to keep final punctuation exact.
-    public init(locale: Locale, streamsVolatileWords: Bool = true) {
+    /// - Parameter contextualStrings: The user's custom words. Apple's on-device
+    ///   recognizer prefers these spellings when the audio is close
+    ///   ("API" instead of "APA"). Nothing is sent off the Mac.
+    public init(locale: Locale, streamsVolatileWords: Bool = true, contextualStrings: [String] = []) {
         self.locale = locale
+        self.contextualStrings = contextualStrings
         self.assembler = ProgressiveTranscriptAssembler(commitsVolatileWords: streamsVolatileWords)
     }
 
@@ -164,6 +169,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             bufferingPolicy: .bufferingOldest(256)
         )
         let analyzer = SpeechAnalyzer(modules: modules, options: nil)
+        await applyContextualStrings(to: analyzer)
         self.analyzer = analyzer
         self.outputFormat = outputFormat
         self.inputContinuation = continuation
@@ -210,6 +216,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
                     bufferingPolicy: .bufferingOldest(256)
                 )
                 let retryAnalyzer = SpeechAnalyzer(modules: retryModules, options: nil)
+                await applyContextualStrings(to: retryAnalyzer)
                 self.analyzer = retryAnalyzer
                 self.outputFormat = retryOutputFormat
                 self.inputContinuation = retryContinuation
@@ -385,6 +392,14 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         let text = String(result.text.characters)
         let update = stateLock.withLock { assembler.receive(text: text, isFinal: result.isFinal) }
         onUpdate?(update)
+    }
+
+    /// Custom vocabulary is a quality hint, never a reason to fail dictation.
+    private func applyContextualStrings(to analyzer: SpeechAnalyzer) async {
+        guard !contextualStrings.isEmpty else { return }
+        let context = AnalysisContext()
+        context.contextualStrings[.general] = contextualStrings
+        try? await analyzer.setContext(context)
     }
 
     public static func normalizedLocaleID(_ identifier: String) -> String {

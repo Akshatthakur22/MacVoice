@@ -1,13 +1,48 @@
 import Foundation
 
+/// Where a phrase will be typed, decided once per dictation.
+public struct PolishContext: Sendable, Equatable {
+    /// False when the phrase continues a sentence already in the field, so its
+    /// first word must not be capitalized.
+    public var startsSentence: Bool
+    /// Terminals run what is typed: no capitalization, no apostrophes, no line
+    /// commands, and no trailing sentence period.
+    public var isTerminal: Bool
+
+    public init(startsSentence: Bool = true, isTerminal: Bool = false) {
+        self.startsSentence = startsSentence
+        self.isTerminal = isTerminal
+    }
+}
+
+/// The cleaned phrase plus any edit it asks for on already-typed text.
+public struct PolishedPhrase: Sendable, Equatable {
+    public var text: String
+    /// The phrase was "scratch that": remove the previously typed phrase.
+    public var retractsPreviousPhrase: Bool
+
+    public init(text: String, retractsPreviousPhrase: Bool = false) {
+        self.text = text
+        self.retractsPreviousPhrase = retractsPreviousPhrase
+    }
+}
+
 /// A replaceable asynchronous transcript-cleanup backend.
 public protocol TranscriptPolisher: Sendable {
-    func polish(_ transcript: String) async throws -> String
+    func polishPhrase(_ transcript: String, context: PolishContext) async throws -> PolishedPhrase
+}
+
+public extension TranscriptPolisher {
+    func polish(_ transcript: String) async throws -> String {
+        try await polishPhrase(transcript, context: PolishContext()).text
+    }
 }
 
 public struct PassthroughTranscriptPolisher: TranscriptPolisher {
     public init() {}
-    public func polish(_ transcript: String) async throws -> String { transcript }
+    public func polishPhrase(_ transcript: String, context: PolishContext) async throws -> PolishedPhrase {
+        PolishedPhrase(text: transcript)
+    }
 }
 
 public enum PolishingMode: String, CaseIterable, Sendable {

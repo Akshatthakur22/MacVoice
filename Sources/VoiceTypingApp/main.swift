@@ -84,6 +84,16 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var shortcutSummary: NSTextField!
     private var shortcutHomeButton: NSButton!
     private var shortcutDisplay = "⌃⌥Space"
+    private var customWordsTextView: NSTextView!
+    private var replacementsTextView: NSTextView!
+    private var vocabularyStatus: NSTextField!
+    /// Settings changed while dictating; rebuild the session once it is idle.
+    private var needsSessionRebuild = false
+
+    private static let vocabularyWordsKey = "vocabularyWords"
+    private static let vocabularyReplacementsKey = "vocabularyReplacements"
+    private static let defaultWordsText = "# One word or phrase per line. Examples:\nAPI\nMacVoice"
+    private static let defaultReplacementsText = "# What you say => what to type. Example:\nmac voice => MacVoice"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let savedShortcut = UserDefaults.standard.dictionary(forKey: "shortcut")
@@ -298,6 +308,36 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         polisherSection.spacing = 8
         let modesPage = makePage([modeTitle, modePicker, modeExplanation, polisherSection])
 
+        let wordsTitle = NSTextField(labelWithString: "Custom words")
+        wordsTitle.font = .systemFont(ofSize: 13, weight: .semibold)
+        let wordsHelp = NSTextField(wrappingLabelWithString: "One per line: names, product terms, jargon. Apple's on-device recognizer will prefer these spellings. Works in both modes.")
+        wordsHelp.font = .systemFont(ofSize: 11)
+        wordsHelp.textColor = .secondaryLabelColor
+        wordsHelp.maximumNumberOfLines = 2
+        let (wordsEditor, wordsTextView) = makeTextEditor(
+            UserDefaults.standard.string(forKey: Self.vocabularyWordsKey) ?? Self.defaultWordsText)
+        customWordsTextView = wordsTextView
+        let replacementsTitle = NSTextField(labelWithString: "Replacements")
+        replacementsTitle.font = .systemFont(ofSize: 13, weight: .semibold)
+        let replacementsHelp = NSTextField(wrappingLabelWithString: "One per line: what you say => what to type. Whole words, any capitalization. Polished mode only. Use \\n for a line break.")
+        replacementsHelp.font = .systemFont(ofSize: 11)
+        replacementsHelp.textColor = .secondaryLabelColor
+        replacementsHelp.maximumNumberOfLines = 2
+        let (replacementsEditor, replacementsView) = makeTextEditor(
+            UserDefaults.standard.string(forKey: Self.vocabularyReplacementsKey) ?? Self.defaultReplacementsText)
+        replacementsTextView = replacementsView
+        let saveWords = NSButton(title: "Save Words", target: self, action: #selector(saveVocabulary))
+        saveWords.bezelStyle = .rounded
+        vocabularyStatus = NSTextField(wrappingLabelWithString: "")
+        vocabularyStatus.font = .systemFont(ofSize: 11)
+        vocabularyStatus.textColor = .secondaryLabelColor
+        vocabularyStatus.maximumNumberOfLines = 2
+        let saveRow = NSStackView(views: [saveWords, vocabularyStatus])
+        saveRow.orientation = .horizontal
+        saveRow.alignment = .centerY
+        saveRow.spacing = 10
+        let wordsPage = makePage([wordsTitle, wordsHelp, wordsEditor, replacementsTitle, replacementsHelp, replacementsEditor, saveRow], spacing: 7)
+
         let shortcutTitle = NSTextField(labelWithString: "Global dictation shortcut")
         shortcutTitle.font = .systemFont(ofSize: 15, weight: .semibold)
         shortcutSummary = NSTextField(wrappingLabelWithString: "Press this shortcut from any app to start or stop dictation.")
@@ -384,6 +424,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         for (identifier, label, view) in [
             ("dictate", "Dictate", dictatePage),
             ("modes", "Modes", modesPage),
+            ("words", "Words", wordsPage),
             ("shortcut", "Shortcut", shortcutPage),
             ("settings", "Settings", settingsPage),
             ("about", "About", aboutPage)
@@ -400,7 +441,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         root.alignment = .leading
         root.spacing = 18
         root.translatesAutoresizingMaskIntoConstraints = false
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 560, height: 540))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 560, height: 590))
         content.addSubview(root)
         NSLayoutConstraint.activate([
             root.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 24),
@@ -408,7 +449,10 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             root.topAnchor.constraint(equalTo: content.topAnchor, constant: 22),
             root.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -20),
             tabs.widthAnchor.constraint(equalToConstant: 512),
-            tabs.heightAnchor.constraint(equalToConstant: 420),
+            tabs.heightAnchor.constraint(equalToConstant: 470),
+            wordsHelp.widthAnchor.constraint(equalToConstant: 450),
+            replacementsHelp.widthAnchor.constraint(equalToConstant: 450),
+            vocabularyStatus.widthAnchor.constraint(equalToConstant: 330),
             startButton.widthAnchor.constraint(equalToConstant: 450),
             windowStatus.widthAnchor.constraint(equalToConstant: 430),
             modeSummary.widthAnchor.constraint(equalToConstant: 430),
@@ -424,7 +468,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         ])
 
         controlWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 570),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 620),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -432,7 +476,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         controlWindow.title = "MacVoice"
         controlWindow.contentView = content
         controlWindow.isReleasedWhenClosed = false
-        controlWindow.minSize = NSSize(width: 540, height: 530)
+        controlWindow.minSize = NSSize(width: 540, height: 580)
         controlWindow.defaultButtonCell = startButton.cell as? NSButtonCell
         updateModeUI()
         applyAppearance(savedAppearance)
@@ -442,12 +486,12 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var modeSummary: NSTextField!
     private var tabView: NSTabView!
 
-    private func makePage(_ views: [NSView]) -> NSView {
-        let page = NSView(frame: NSRect(x: 0, y: 0, width: 490, height: 400))
+    private func makePage(_ views: [NSView], spacing: CGFloat = 13) -> NSView {
+        let page = NSView(frame: NSRect(x: 0, y: 0, width: 490, height: 440))
         let stack = NSStackView(views: views)
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 13
+        stack.spacing = spacing
         stack.translatesAutoresizingMaskIntoConstraints = false
         page.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -455,6 +499,59 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             stack.topAnchor.constraint(equalTo: page.topAnchor, constant: 18)
         ])
         return page
+    }
+
+    private func makeTextEditor(_ text: String) -> (NSScrollView, NSTextView) {
+        let scroll = NSTextView.scrollableTextView()
+        let textView = scroll.documentView as! NSTextView
+        textView.string = text
+        textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.isRichText = false
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.textContainerInset = NSSize(width: 4, height: 4)
+        scroll.borderType = .bezelBorder
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.widthAnchor.constraint(equalToConstant: 450).isActive = true
+        scroll.heightAnchor.constraint(equalToConstant: 92).isActive = true
+        return (scroll, textView)
+    }
+
+    private func storedVocabulary() -> Vocabulary {
+        Vocabulary(
+            wordsText: UserDefaults.standard.string(forKey: Self.vocabularyWordsKey) ?? "",
+            replacementsText: UserDefaults.standard.string(forKey: Self.vocabularyReplacementsKey) ?? ""
+        )
+    }
+
+    @objc private func saveVocabulary() {
+        let wordsText = customWordsTextView.string
+        let replacementsText = replacementsTextView.string
+        UserDefaults.standard.set(wordsText, forKey: Self.vocabularyWordsKey)
+        UserDefaults.standard.set(replacementsText, forKey: Self.vocabularyReplacementsKey)
+        let vocabulary = Vocabulary(wordsText: wordsText, replacementsText: replacementsText)
+        var message = "Saved \(vocabulary.words.count) word\(vocabulary.words.count == 1 ? "" : "s") and \(vocabulary.replacements.count) replacement\(vocabulary.replacements.count == 1 ? "" : "s")."
+        if let bad = vocabulary.invalidLines.first {
+            message += " Skipped \"\(bad)\" (use =>)."
+        }
+        vocabularyStatus.stringValue = message
+        vocabularyStatus.textColor = vocabulary.invalidLines.isEmpty ? .secondaryLabelColor : .systemOrange
+        rebuildSessionWhenIdle()
+    }
+
+    /// Applies new settings now if idle, otherwise right after this dictation.
+    private func rebuildSessionWhenIdle() {
+        Task { @MainActor in
+            let state = await self.session?.state
+            switch state {
+            case .listening?, .starting?, .stopping?:
+                self.needsSessionRebuild = true
+            default:
+                await self.configureSession(locale: self.currentConfiguredLocale ?? Locale.current)
+            }
+        }
     }
 
     @objc private func showShortcutTab() {
@@ -800,9 +897,14 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
     private func configureSession(locale: Locale = Locale.current) async {
         let mode = PolishingMode(rawValue: UserDefaults.standard.string(forKey: "typingMode") ?? PolishingMode.polished.rawValue) ?? .polished
-        let recognizer = AppleSpeechAnalyzerRecognizer(locale: locale, streamsVolatileWords: mode == .verbatim)
+        let vocabulary = storedVocabulary()
+        let recognizer = AppleSpeechAnalyzerRecognizer(
+            locale: locale,
+            streamsVolatileWords: mode == .verbatim,
+            contextualStrings: vocabulary.contextualStrings
+        )
         let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .smartChatAware, smartLeadingSpace: true)
-        let polisher = NativeSwiftTranscriptPolisher(locale: locale)
+        let polisher = NativeSwiftTranscriptPolisher(locale: locale, replacements: vocabulary.replacements)
         let session = VoiceTypingSession(
             audioCapture: AudioCapture(), recognizer: recognizer, typingEngine: engine,
             polisher: polisher, polishingMode: mode
@@ -810,6 +912,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         self.recognizer = recognizer
         self.session = session
         self.currentConfiguredLocale = locale
+        self.needsSessionRebuild = false
         updatePolisherStatus()
         await session.setStateChangeHandler { [weak self] state in
             Task { @MainActor in self?.render(state) }
@@ -831,7 +934,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             ? "Selected: Polished (Default) · removes fillers, fixes capitalization, and follows spoken commands."
             : "Selected: Verbatim · sends recognized words directly with minimal changes."
         modeExplanation.stringValue = polished
-            ? "Removes fillers (um, uh), collapses stutters (\"the the\"), adds missing apostrophes, and capitalizes sentences. Say \"new line\", \"new paragraph\", \"bullet point\", \"comma\", \"question mark\", or end with \"period\". Text is typed one sentence at a time."
+            ? "Removes fillers (um, uh), collapses stutters (\"the the\"), adds missing apostrophes, and capitalizes sentences. Say \"new line\", \"new paragraph\", \"bullet point\", \"comma\", \"question mark\", or end with \"period\". Say \"scratch that\" to remove the last sentence. In Terminal, only fillers are removed. Text is typed one sentence at a time."
             : "Types recognized words live, as you speak, with no changes."
         polisherSection.isHidden = !polished
         polisherSection.setAccessibilityElement(true)
@@ -863,6 +966,10 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
         switch state {
         case .idle:
+            if needsSessionRebuild {
+                needsSessionRebuild = false
+                Task { @MainActor in await self.configureSession(locale: self.currentConfiguredLocale ?? Locale.current) }
+            }
             setStatus("Idle")
             statusSymbol.contentTintColor = .tertiaryLabelColor
             startButton?.title = "Start Dictation"

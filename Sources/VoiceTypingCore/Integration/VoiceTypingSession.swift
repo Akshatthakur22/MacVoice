@@ -77,9 +77,9 @@ public actor VoiceTypingSession {
         let ticket = generation
         setState(.starting)
         reconciler.reset()
-        typingOutput.beginDictation()
+        let insertion = await typingOutput.beginDictation()
         if polishingMode == .polished {
-            await polishingCoordinator.begin()
+            await polishingCoordinator.begin(context: insertion)
             await polishingCoordinator.setErrorHandler { [weak self] error in
                 Task { await self?.reportWarning(error.localizedDescription) }
             }

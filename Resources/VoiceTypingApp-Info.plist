@@ -4,33 +4,33 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>MacVoice</string>
 	<key>CFBundleExecutable</key>
 	<string>VoiceTypingApp</string>
+	<key>CFBundleIconFile</key>
+	<string>MacVoice</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.typer.voicetyping</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>MacVoice</string>
-	<key>CFBundleDisplayName</key>
-	<string>MacVoice</string>
-	<key>CFBundleIconFile</key>
-	<string>MacVoice</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>0.1.1</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MacVoice uses microphone audio for speech recognition and does not save recordings.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>MacVoice uses on-device speech recognition to transcribe your voice into text.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>MacVoice uses on-device speech recognition to transcribe your voice into text.</string>
 </dict>
 </plist>

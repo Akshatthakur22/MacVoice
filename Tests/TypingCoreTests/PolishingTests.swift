@@ -143,3 +143,111 @@ struct PolishingTests {
         #expect(!FocusedTextContext.needsLeadingSpace(after: "d", before: ","))
     }
 }
+
+@Suite("PolishingFeatureTests")
+struct PolishingFeatureTests {
+    private let en = Locale(identifier: "en_US")
+
+    // MARK: Vocabulary
+
+    @Test func vocabularyParsing() {
+        let vocabulary = Vocabulary(
+            wordsText: "# comment\nAPI\n  Kubernetes  \napi\n\n",
+            replacementsText: "mac voice => MacVoice\nsig -> Best,\\nAkshat\nno separator here\n => empty\nmac voice => Duplicate"
+        )
+        #expect(vocabulary.words == ["API", "Kubernetes"])
+        #expect(vocabulary.replacements == [
+            TextReplacement(spoken: "mac voice", written: "MacVoice"),
+            TextReplacement(spoken: "sig", written: "Best,\nAkshat")
+        ])
+        #expect(vocabulary.invalidLines == ["no separator here", "=> empty"])
+        #expect(vocabulary.contextualStrings == ["API", "Kubernetes", "MacVoice"])
+    }
+
+    @Test func replacementsMatchWholeWordsAnyCase() {
+        let polisher = NativeSwiftTranscriptPolisher(locale: en, replacements: [
+            TextReplacement(spoken: "mac voice", written: "MacVoice"),
+            TextReplacement(spoken: "my email", written: "a.b@example.com")
+        ])
+        #expect(polisher.polishText("I use Mac voice daily.") == "I use MacVoice daily.")
+        #expect(polisher.polishText("I use mac-voice daily.") == "I use MacVoice daily.")
+        #expect(polisher.polishText("Emacs voice notes.") == "Emacs voice notes.")
+        #expect(polisher.polishText("my email.") == "a.b@example.com.")
+    }
+
+    // MARK: Scratch that
+
+    @Test func scratchThat() {
+        let polisher = NativeSwiftTranscriptPolisher(locale: en)
+        #expect(polisher.polishedPhrase("I want pizza scratch that I want pasta.")
+                == PolishedPhrase(text: "I want pasta."))
+        #expect(polisher.polishedPhrase("Scratch that.") == PolishedPhrase(text: "", retractsPreviousPhrase: true))
+        #expect(polisher.polishedPhrase(" Um, scratch that. Hello there.")
+                == PolishedPhrase(text: " Hello there.", retractsPreviousPhrase: true))
+        #expect(polisher.polishedPhrase("That will scratch that itch.") == PolishedPhrase(text: "That will scratch that itch."))
+    }
+
+    @Test func scratchThatRetractsPreviousTypedPhrase() async {
+        let output = RecordingTypingOutput()
+        let coordinator = PolishingCoordinator(
+            engine: output, polisher: NativeSwiftTranscriptPolisher(locale: en), mode: .polished)
+        await coordinator.begin()
+        await coordinator.consume("Hello there. Scratch that. Goodbye")
+        await coordinator.finish()
+        #expect(output.events == [.append("Hello there."), .retract, .append(" Goodbye")])
+    }
+
+    // MARK: Cursor-aware capitalization
+
+    @Test func continuingASentenceDoesNotCapitalize() {
+        let polisher = NativeSwiftTranscriptPolisher(locale: en)
+        let middle = PolishContext(startsSentence: false)
+        #expect(polisher.polishText("That we should ship.", context: middle) == "that we should ship.")
+        #expect(polisher.polishText("I think so.", context: middle) == "I think so.")
+        #expect(polisher.polishText("NASA called.", context: middle) == "NASA called.")
+        #expect(polisher.polishText("John Smith agreed.", context: middle) == "John Smith agreed.")
+    }
+
+    @Test func insertionContextDetectsSentencePosition() {
+        #expect(InsertionContext(preceding: .text("was ")).continuesSentence)
+        #expect(InsertionContext(preceding: .text("re,")).continuesSentence)
+        #expect(!InsertionContext(preceding: .text("ne. ")).continuesSentence)
+        #expect(!InsertionContext(preceding: .text("ne\n")).continuesSentence)
+        #expect(!InsertionContext(preceding: .startOfText).continuesSentence)
+        #expect(!InsertionContext(preceding: .unknown).continuesSentence)
+    }
+
+    @Test func leadingSpacingAdjustment() {
+        #expect(FocusedTextContext.adjustLeadingSpacing("Next", after: .text("ne.")) == " Next")
+        #expect(FocusedTextContext.adjustLeadingSpacing(" Next", after: .text("ne ")) == "Next")
+        #expect(FocusedTextContext.adjustLeadingSpacing(" Next", after: .startOfText) == "Next")
+        #expect(FocusedTextContext.adjustLeadingSpacing(" Next", after: .unknown) == " Next")
+        #expect(FocusedTextContext.adjustLeadingSpacing(", then", after: .text("one")) == ", then")
+    }
+
+    // MARK: Terminal
+
+    @Test func terminalKeepsCommandsRunnable() {
+        let polisher = NativeSwiftTranscriptPolisher(locale: en)
+        let terminal = PolishContext(isTerminal: true)
+        #expect(polisher.polishText("Git status.", context: terminal) == "git status")
+        #expect(polisher.polishText("um ls -i dont", context: terminal) == "ls -i dont")
+        #expect(polisher.polishText("echo hi new line", context: terminal) == "echo hi new line")
+        #expect(InsertionContext(bundleIdentifier: "com.apple.Terminal").isTerminal)
+        #expect(!InsertionContext(bundleIdentifier: "com.apple.TextEdit").isTerminal)
+    }
+}
+
+private final class RecordingTypingOutput: TypingOutput, @unchecked Sendable {
+    enum Event: Equatable { case append(String), retract }
+    private let lock = NSLock()
+    private var recorded: [Event] = []
+    var events: [Event] { lock.withLock { recorded } }
+
+    func append(_ text: String, completion: ((Result<TypingReport, TypingError>) -> Void)?) {
+        lock.withLock { recorded.append(.append(text)) }
+    }
+    func retractLastAppend() { lock.withLock { recorded.append(.retract) } }
+    func stop() {}
+    func drain() async {}
+}

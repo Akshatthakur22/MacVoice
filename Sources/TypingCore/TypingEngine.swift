@@ -36,13 +36,17 @@ public protocol TypingOutput: AnyObject {
     func append(_ text: String, completion: ((Result<TypingReport, TypingError>) -> Void)?)
     func stop()
     func drain() async
-    /// Marks the start of a new dictation so the output can adapt to the text
-    /// already at the cursor. Optional; the default does nothing.
-    func beginDictation()
+    /// Marks the start of a new dictation and reports what is known about the
+    /// destination (frontmost app, text before the caret). Default: unknown.
+    func beginDictation() async -> InsertionContext
+    /// Removes the text of the most recent `append` with Backspace, if this
+    /// dictation typed it. Used by the spoken "scratch that" command.
+    func retractLastAppend()
 }
 
 public extension TypingOutput {
-    func beginDictation() {}
+    func beginDictation() async -> InsertionContext { .unknown }
+    func retractLastAppend() {}
 }
 
 private enum TypingControl: Error { case cancelled }
@@ -52,7 +56,8 @@ private enum TypingControl: Error { case cancelled }
 /// Calls are serialized on a private queue, so callers can submit speech results
 /// without blocking a UI or recognition thread. `append` means append-only text;
 /// it does not revise text already delivered to the destination.
-public final class TypingEngine: TypingOutput {
+/// Thread safety: mutable state is confined to `queue` or guarded by `lock`.
+public final class TypingEngine: TypingOutput, @unchecked Sendable {
     /// Gives apps time to process text on either side of a Shift+Return boundary.
     private let shiftEnterSettleDelay: TimeInterval = 0.025
     private let queue = DispatchQueue(label: "TypingCore.events", qos: .userInitiated)
@@ -62,7 +67,11 @@ public final class TypingEngine: TypingOutput {
     private let emitter = KeyboardEmitter()
     private let newlineBehavior: NewlineBehavior
     private let smartLeadingSpace: Bool
-    private var needsLeadingContext = false
+    // Typing-queue-confined state for spacing and "scratch that".
+    private var spacingContext: InsertionContext.Preceding?
+    private var tail: InsertionContext.Preceding = .unknown
+    private var tailBeforeLastAppend: InsertionContext.Preceding = .unknown
+    private var lastAppendKeyCount = 0
 
     /// - Parameter interCharacterDelay: Minimum delay between grapheme clusters.
     ///   Zero minimizes latency; a small positive value can help applications that
@@ -78,10 +87,39 @@ public final class TypingEngine: TypingOutput {
         self.smartLeadingSpace = smartLeadingSpace
     }
 
-    public func beginDictation() {
-        guard smartLeadingSpace else { return }
+    public func beginDictation() async -> InsertionContext {
+        await withCheckedContinuation { continuation in
+            queue.async { [self] in
+                let context = FocusedTextContext.current()
+                tail = context.preceding
+                tailBeforeLastAppend = context.preceding
+                lastAppendKeyCount = 0
+                spacingContext = smartLeadingSpace ? context.preceding : nil
+                continuation.resume(returning: context)
+            }
+        }
+    }
+
+    public func retractLastAppend() {
         lock.lock()
-        needsLeadingContext = true
+        let ticket = generation
+        queue.async { [weak self] in
+            guard let self else { return }
+            let count = self.lastAppendKeyCount
+            guard count > 0, CGPreflightPostEventAccess(), !IsSecureEventInputEnabled() else { return }
+            for _ in 0..<count {
+                self.lock.lock()
+                let isCurrent = self.generation == ticket
+                self.lock.unlock()
+                guard isCurrent else { return }
+                try? self.emitter.emit(.keyCode(51)) // Delete (Backspace)
+                if self.interCharacterDelay > 0 { Thread.sleep(forTimeInterval: self.interCharacterDelay) }
+            }
+            self.lastAppendKeyCount = 0
+            self.tail = self.tailBeforeLastAppend
+            // Re-check spacing for the next text against what is now before the caret.
+            if self.smartLeadingSpace { self.spacingContext = self.tail }
+        }
         lock.unlock()
     }
 
@@ -181,14 +219,15 @@ public final class TypingEngine: TypingOutput {
                 return
             }
             var text = text
-            self.lock.lock()
-            let checkContext = self.needsLeadingContext && self.generation == ticket
-            if checkContext { self.needsLeadingContext = false }
-            self.lock.unlock()
-            if checkContext,
-               FocusedTextContext.needsLeadingSpace(
-                   after: FocusedTextContext.characterBeforeInsertionPoint(), before: text.first) {
-                text = " " + text
+            if let context = self.spacingContext {
+                self.spacingContext = nil
+                text = FocusedTextContext.adjustLeadingSpacing(text, after: context)
+                guard !text.isEmpty else {
+                    if let completion {
+                        DispatchQueue.main.async { completion(.success(TypingReport(eventPairsPosted: 0, timeToFirstEvent: nil))) }
+                    }
+                    return
+                }
             }
             let result: Result<TypingReport, TypingError>
             if !CGPreflightPostEventAccess() {
@@ -226,6 +265,9 @@ public final class TypingEngine: TypingOutput {
                         }
                     }
                     result = .success(TypingReport(eventPairsPosted: posted, timeToFirstEvent: firstEventLatency))
+                    self.tailBeforeLastAppend = self.tail
+                    self.lastAppendKeyCount = posted
+                    if let last = text.last { self.tail = .text(String(last)) }
                 } catch is TypingControl {
                     result = .failure(.cancelled(eventPairsPosted: posted))
                 } catch let error as TypingError {
@@ -237,6 +279,11 @@ public final class TypingEngine: TypingOutput {
                 } catch {
                     result = .failure(.eventCreationFailed(eventPairsPosted: posted))
                 }
+            }
+            if case .failure = result {
+                // Unknown how much reached the app; never retract a partial batch.
+                self.lastAppendKeyCount = 0
+                self.tail = .unknown
             }
             if let completion { DispatchQueue.main.async { completion(result) } }
         }
