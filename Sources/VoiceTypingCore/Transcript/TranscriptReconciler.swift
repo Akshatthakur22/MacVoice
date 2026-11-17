@@ -24,7 +24,7 @@ public struct TranscriptReconciler {
 
         let confirmed = update.confirmedTranscript
         let safeText: String
-        if update.isFinal {
+        if update.isFinal || update.endsSegment {
             safeText = confirmed
         } else {
             safeText = String(confirmed.dropLast())

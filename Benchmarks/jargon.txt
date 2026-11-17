@@ -1,0 +1,6 @@
+The API returns JSON from the Kubernetes cluster.
+MacVoice types directly into Xcode and Slack.
+We store the tokens in Redis and Postgres.
+The GraphQL endpoint needs OAuth before launch.
+Deploy the SwiftUI app with TestFlight tonight.
+Akshat merged the PR into the main branch.

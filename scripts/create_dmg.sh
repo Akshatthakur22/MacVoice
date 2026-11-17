@@ -15,18 +15,12 @@ STAGING_DIR="$DIST_DIR/dmg_staging"
 APPLE_DEV_ID=$(security find-identity -v -p codesigning 2>/dev/null | grep "Developer ID Application:" | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/' || true)
 SIGNING_IDENTITY=${MACVOICE_CODESIGN_IDENTITY:-$APPLE_DEV_ID}
 
-echo "==> Packaging binary..."
-# Use Universal binary (arm64 + x86_64) if available, otherwise build release
-UNIVERSAL_BIN="$REPO_ROOT/.build/out/Products/Release/VoiceTypingApp"
-if [ ! -f "$UNIVERSAL_BIN" ]; then
-  echo "==> Building optimized Release binary..."
-  cd "$REPO_ROOT"
-  swift build -c release --product VoiceTypingApp
-  BIN_PATH="$(swift build -c release --show-bin-path)/VoiceTypingApp"
-else
-  echo "==> Using prebuilt Universal binary (arm64 + x86_64)..."
-  BIN_PATH="$UNIVERSAL_BIN"
-fi
+echo "==> Building optimized Release binary..."
+# Always rebuild so the DMG never ships a stale binary.
+cd "$REPO_ROOT"
+swift build -c release --product VoiceTypingApp
+BIN_PATH="$(swift build -c release --show-bin-path)/VoiceTypingApp"
+echo "--> Architectures: $(lipo -archs "$BIN_PATH")"
 
 echo "==> Packaging MacVoice.app bundle..."
 rm -rf "$APP_BUNDLE"
@@ -34,10 +28,11 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/VoiceTypingApp"
 chmod +x "$APP_BUNDLE/Contents/MacOS/VoiceTypingApp"
+# Remove local symbols (about half the binary). Keep the unstripped .build binary to symbolicate crash logs.
+strip -x "$APP_BUNDLE/Contents/MacOS/VoiceTypingApp"
 cp "$REPO_ROOT/Resources/VoiceTypingApp-Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 cp "$REPO_ROOT/Brand/Exports/MacVoice.icns" "$APP_BUNDLE/Contents/Resources/MacVoice.icns"
-cp "$REPO_ROOT/Brand/Exports/macvoice-icon-light-1024.png" "$APP_BUNDLE/Contents/Resources/MacVoiceAppIcon.png"
-cp "$REPO_ROOT/Brand/Exports/macvoice-symbol-mono-black-1024.png" "$APP_BUNDLE/Contents/Resources/MacVoiceMenuBar.png"
+cp "$REPO_ROOT/Brand/Exports/macvoice-menubar-36.png" "$APP_BUNDLE/Contents/Resources/MacVoiceMenuBar.png"
 
 # Strip all extended attributes and quarantine flags before signing
 xattr -cr "$APP_BUNDLE"

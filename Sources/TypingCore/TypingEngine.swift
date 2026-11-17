@@ -67,6 +67,7 @@ public final class TypingEngine: TypingOutput, @unchecked Sendable {
     private let emitter = KeyboardEmitter()
     private let newlineBehavior: NewlineBehavior
     private let smartLeadingSpace: Bool
+    private let maxUnitsPerEvent: Int
     // Typing-queue-confined state for spacing and "scratch that".
     private var spacingContext: InsertionContext.Preceding?
     private var tail: InsertionContext.Preceding = .unknown
@@ -79,12 +80,17 @@ public final class TypingEngine: TypingOutput, @unchecked Sendable {
     /// - Parameter smartLeadingSpace: When true, the first text of each
     ///   dictation gets a leading space if the character before the caret is
     ///   not already whitespace (so "done." + "Next" becomes "done. Next").
+    /// - Parameter charactersPerEvent: Group up to this many characters (max
+    ///   20 UTF-16 units) into one key event. 1 types one character at a time,
+    ///   for apps that only read the first character of an event.
     public init(interCharacterDelay: TimeInterval = 0.005,
                 newlineBehavior: NewlineBehavior,
-                smartLeadingSpace: Bool = false) {
+                smartLeadingSpace: Bool = false,
+                charactersPerEvent: Int = 1) {
         self.interCharacterDelay = max(0, interCharacterDelay)
         self.newlineBehavior = newlineBehavior
         self.smartLeadingSpace = smartLeadingSpace
+        self.maxUnitsPerEvent = max(1, charactersPerEvent)
     }
 
     public func beginDictation() async -> InsertionContext {
@@ -236,9 +242,11 @@ public final class TypingEngine: TypingOutput, @unchecked Sendable {
                 result = .failure(.secureInputActive)
             } else {
                 var posted = 0
+                var charactersTyped = 0
                 var firstEventLatency: TimeInterval?
                 do {
-                    try TextEncoder.forEachAction(in: text, newlineBehavior: self.effectiveNewlineBehavior) { action in
+                    try TextEncoder.forEachAction(in: text, newlineBehavior: self.effectiveNewlineBehavior,
+                                                  maxUnitsPerEvent: self.maxUnitsPerEvent) { action in
                         let isShiftEnter: Bool
                         if case .shiftEnter = action {
                             isShiftEnter = true
@@ -254,6 +262,7 @@ public final class TypingEngine: TypingOutput, @unchecked Sendable {
                         guard isCurrent else { throw TypingControl.cancelled }
                         try self.emitter.emit(action)
                         posted += 1
+                        charactersTyped += action.insertedCharacterCount
                         if firstEventLatency == nil {
                             firstEventLatency = Double(DispatchTime.now().uptimeNanoseconds &- enqueuedAt) / 1_000_000_000
                         }
@@ -266,7 +275,7 @@ public final class TypingEngine: TypingOutput, @unchecked Sendable {
                     }
                     result = .success(TypingReport(eventPairsPosted: posted, timeToFirstEvent: firstEventLatency))
                     self.tailBeforeLastAppend = self.tail
-                    self.lastAppendKeyCount = posted
+                    self.lastAppendKeyCount = charactersTyped
                     if let last = text.last { self.tail = .text(String(last)) }
                 } catch is TypingControl {
                     result = .failure(.cancelled(eventPairsPosted: posted))

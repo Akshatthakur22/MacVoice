@@ -7,11 +7,15 @@ public struct SpeechRecognitionUpdate: Sendable, Equatable {
     public let hypothesis: String
     public let confirmedTranscript: String
     public let isFinal: Bool
+    /// The recognizer finalized a segment (usually at a pause): the confirmed
+    /// text is complete up to here, so nothing needs to be held back.
+    public let endsSegment: Bool
 
-    public init(hypothesis: String, confirmedTranscript: String, isFinal: Bool = false) {
+    public init(hypothesis: String, confirmedTranscript: String, isFinal: Bool = false, endsSegment: Bool = false) {
         self.hypothesis = hypothesis
         self.confirmedTranscript = confirmedTranscript
         self.isFinal = isFinal
+        self.endsSegment = endsSegment
     }
 }
 

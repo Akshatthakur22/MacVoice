@@ -16,7 +16,7 @@ let package = Package(
         .executableTarget(name: "TypingCoreDemo", dependencies: ["TypingCore"]),
         .executableTarget(name: "VoiceTypingApp", dependencies: ["TypingCore", "VoiceTypingCore"]),
         .executableTarget(name: "VoiceTypingCoreChecks", dependencies: ["VoiceTypingCore"]),
-        .executableTarget(name: "VoiceTypingBenchmark", dependencies: ["VoiceTypingCore"]),
+        .executableTarget(name: "VoiceTypingBenchmark", dependencies: ["TypingCore", "VoiceTypingCore"]),
         .testTarget(
             name: "TypingCoreTests",
             dependencies: ["TypingCore", "VoiceTypingCore"],

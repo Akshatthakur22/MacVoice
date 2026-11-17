@@ -39,7 +39,7 @@ public struct ProgressiveTranscriptAssembler: Sendable {
             confirmedText = full
             segmentBase = full
             segmentCommitted = ""
-            return SpeechRecognitionUpdate(hypothesis: full, confirmedTranscript: full, isFinal: false)
+            return SpeechRecognitionUpdate(hypothesis: full, confirmedTranscript: full, isFinal: false, endsSegment: true)
         }
 
         // A word is complete once whitespace follows it. Commit through the end

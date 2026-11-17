@@ -39,33 +39,97 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     private var outputSampleOffset: Int64 = 0
     private var running = false
 
+    /// Which Apple on-device model transcribes the audio.
+    public enum Engine: String, Sendable, CaseIterable {
+        /// General-purpose SpeechTranscriber with progressive results.
+        case speech
+        /// SpeechTranscriber biased toward responsiveness (`fastResults`).
+        case speechFast
+        /// DictationTranscriber: Apple's keyboard-dictation model with
+        /// punctuation and frequent finalization.
+        case dictation
+    }
+
+    private let engine: Engine
+
     /// - Parameter streamsVolatileWords: Type completed words before the
     ///   recognizer finalizes a segment (live Verbatim typing). Pass false for
     ///   Polished mode to keep final punctuation exact.
     /// - Parameter contextualStrings: The user's custom words. Apple's on-device
     ///   recognizer prefers these spellings when the audio is close
     ///   ("API" instead of "APA"). Nothing is sent off the Mac.
-    public init(locale: Locale, streamsVolatileWords: Bool = true, contextualStrings: [String] = []) {
+    public init(locale: Locale, engine: Engine = .speech, streamsVolatileWords: Bool = true, contextualStrings: [String] = []) {
         self.locale = locale
+        self.engine = engine
         self.contextualStrings = contextualStrings
         self.assembler = ProgressiveTranscriptAssembler(commitsVolatileWords: streamsVolatileWords)
+    }
+
+    // MARK: Engine-specific pieces
+
+    private func engineSupportedLocale(equivalentTo locale: Locale) async -> Locale? {
+        switch engine {
+        case .speech, .speechFast: await SpeechTranscriber.supportedLocale(equivalentTo: locale)
+        case .dictation: await DictationTranscriber.supportedLocale(equivalentTo: locale)
+        }
+    }
+
+    private func engineInstalledLocales() async -> [Locale] {
+        switch engine {
+        case .speech, .speechFast: await SpeechTranscriber.installedLocales
+        case .dictation: await DictationTranscriber.installedLocales
+        }
+    }
+
+    /// The transcription module plus a function that pumps its results into `receive`.
+    private func makeModule(locale: Locale) -> (module: any SpeechModule, pumpResults: () -> Task<Void, Never>) {
+        switch engine {
+        case .speech, .speechFast:
+            var preset = SpeechTranscriber.Preset.progressiveTranscription
+            if engine == .speechFast { preset.reportingOptions.insert(.fastResults) }
+            let transcriber = SpeechTranscriber(locale: locale, preset: preset)
+            return (transcriber, { Task { [weak self] in
+                do {
+                    for try await result in transcriber.results {
+                        self?.receive(text: String(result.text.characters), isFinal: result.isFinal)
+                    }
+                } catch {
+                    self?.onError?(SpeechRecognizerError.inferenceFailed(error.localizedDescription))
+                }
+            } })
+        case .dictation:
+            var preset = DictationTranscriber.Preset.progressiveLongDictation
+            preset.transcriptionOptions.insert(.punctuation)
+            preset.reportingOptions.formUnion([.volatileResults, .frequentFinalization])
+            let transcriber = DictationTranscriber(locale: locale, preset: preset)
+            return (transcriber, { Task { [weak self] in
+                do {
+                    for try await result in transcriber.results {
+                        self?.receive(text: String(result.text.characters), isFinal: result.isFinal)
+                    }
+                } catch {
+                    self?.onError?(SpeechRecognizerError.inferenceFailed(error.localizedDescription))
+                }
+            } })
+        }
+    }
+
+    private func isInstalledOnDisk(_ supported: Locale) async -> Bool {
+        let target = Self.normalizedLocaleID(supported.identifier)
+        return await engineInstalledLocales().contains { Self.normalizedLocaleID($0.identifier) == target }
     }
 
     /// Explicitly installs the system-managed speech assets. This may download
     /// model data from Apple; it is separate from `start()` and microphone use.
     public func installAssets() async throws {
-        guard SpeechTranscriber.isAvailable else {
-            throw SpeechRecognizerError.modelUnavailable("SpeechTranscriber is unavailable on this Mac.")
+        if engine != .dictation {
+            guard SpeechTranscriber.isAvailable else {
+                throw SpeechRecognizerError.modelUnavailable("SpeechTranscriber is unavailable on this Mac.")
+            }
         }
         let supported = try await supportedLocale()
-        let targetNorm = Self.normalizedLocaleID(supported.identifier)
-        let installed = await SpeechTranscriber.installedLocales
-        if installed.contains(where: { Self.normalizedLocaleID($0.identifier) == targetNorm }) {
-            return
-        }
-
-        let transcriber = SpeechTranscriber(locale: supported, preset: .progressiveTranscription)
-        let modules: [any SpeechModule] = [transcriber]
+        if await isInstalledOnDisk(supported) { return }
+        let modules = [makeModule(locale: supported).module]
 
         switch await AssetInventory.status(forModules: modules) {
         case .installed:
@@ -135,21 +199,17 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     public func start() async throws {
         try Task.checkCancellation()
         guard !running else { throw SpeechRecognizerError.modelLoadFailed("Recognizer is already running.") }
-        guard SpeechTranscriber.isAvailable else {
-            throw SpeechRecognizerError.modelUnavailable("SpeechTranscriber is unavailable on this Mac.")
+        if engine != .dictation {
+            guard SpeechTranscriber.isAvailable else {
+                throw SpeechRecognizerError.modelUnavailable("SpeechTranscriber is unavailable on this Mac.")
+            }
         }
         let supported = try await supportedLocale()
         try Task.checkCancellation()
-        let transcriber = SpeechTranscriber(locale: supported, preset: .progressiveTranscription)
-        let modules: [any SpeechModule] = [transcriber]
 
-        // Fast path: if the assets for this locale are already installed on disk,
-        // do not call installAssets() or hammer the XPC daemon with download requests!
-        let targetNorm = Self.normalizedLocaleID(supported.identifier)
-        let installed = await SpeechTranscriber.installedLocales
-        let isAlreadyOnDisk = installed.contains(where: { Self.normalizedLocaleID($0.identifier) == targetNorm })
-
-        if !isAlreadyOnDisk {
+        // Fast path: assets already on disk; skip asset-inventory XPC requests.
+        if await !isInstalledOnDisk(supported) {
+            let modules = [makeModule(locale: supported).module]
             var assetStatus = await AssetInventory.status(forModules: modules)
             if assetStatus != .installed {
                 try await installAssets()
@@ -159,15 +219,36 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
                 throw SpeechRecognizerError.modelUnavailable("Speech assets for \(locale.identifier) are not installed. Connect to the internet and press Try Again to restore them.")
             }
         }
-        try Task.checkCancellation()
+
+        // One retry: macOS can hibernate the speech daemon (NSCocoaErrorDomain
+        // 4097/4099); it respawns within a moment.
+        for attempt in 0..<2 {
+            try Task.checkCancellation()
+            do {
+                try await launchAnalyzer(locale: supported)
+                return
+            } catch {
+                if error is CancellationError { throw error }
+                let nsError = error as NSError
+                let daemonInterrupted = nsError.domain == NSCocoaErrorDomain && (nsError.code == 4099 || nsError.code == 4097)
+                guard attempt == 0, daemonInterrupted else {
+                    if let recognizerError = error as? SpeechRecognizerError { throw recognizerError }
+                    throw SpeechRecognizerError.modelLoadFailed(error.localizedDescription)
+                }
+                try await Task.sleep(nanoseconds: 300_000_000)
+            }
+        }
+    }
+
+    private func launchAnalyzer(locale supported: Locale) async throws {
+        let (module, pumpResults) = makeModule(locale: supported)
+        let modules = [module]
         guard let outputFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: modules) else {
             throw SpeechRecognizerError.unsupportedAudioFormat
         }
         try Task.checkCancellation()
 
-        let (inputStream, continuation) = AsyncStream<AnalyzerInput>.makeStream(
-            bufferingPolicy: .bufferingOldest(256)
-        )
+        let (inputStream, continuation) = AsyncStream<AnalyzerInput>.makeStream(bufferingPolicy: .bufferingOldest(256))
         let analyzer = SpeechAnalyzer(modules: modules, options: nil)
         await applyContextualStrings(to: analyzer)
         self.analyzer = analyzer
@@ -176,16 +257,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         stateLock.withLock { assembler.reset() }
         outputSampleOffset = 0
         running = true
-
-        resultTask = Task { [weak self] in
-            do {
-                for try await result in transcriber.results {
-                    self?.receive(result)
-                }
-            } catch {
-                self?.onError?(SpeechRecognizerError.inferenceFailed(error.localizedDescription))
-            }
-        }
+        resultTask = pumpResults()
 
         do {
             try await analyzer.start(inputSequence: inputStream)
@@ -199,60 +271,7 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             inputContinuation = nil
             self.analyzer = nil
             self.outputFormat = nil
-            if error is CancellationError { throw error }
-
-            // If macOS hibernated the speech daemon (NSCocoaErrorDomain Code=4099/4097),
-            // wait briefly for the daemon to respawn and retry once.
-            let nsError = error as NSError
-            if nsError.domain == NSCocoaErrorDomain && (nsError.code == 4099 || nsError.code == 4097) {
-                try await Task.sleep(nanoseconds: 300_000_000)
-                try Task.checkCancellation()
-                let retryTranscriber = SpeechTranscriber(locale: try await supportedLocale(), preset: .progressiveTranscription)
-                let retryModules: [any SpeechModule] = [retryTranscriber]
-                guard let retryOutputFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: retryModules) else {
-                    throw SpeechRecognizerError.unsupportedAudioFormat
-                }
-                let (retryStream, retryContinuation) = AsyncStream<AnalyzerInput>.makeStream(
-                    bufferingPolicy: .bufferingOldest(256)
-                )
-                let retryAnalyzer = SpeechAnalyzer(modules: retryModules, options: nil)
-                await applyContextualStrings(to: retryAnalyzer)
-                self.analyzer = retryAnalyzer
-                self.outputFormat = retryOutputFormat
-                self.inputContinuation = retryContinuation
-                stateLock.withLock { assembler.reset() }
-                outputSampleOffset = 0
-                running = true
-
-                resultTask = Task { [weak self] in
-                    do {
-                        for try await result in retryTranscriber.results {
-                            self?.receive(result)
-                        }
-                    } catch {
-                        self?.onError?(SpeechRecognizerError.inferenceFailed(error.localizedDescription))
-                    }
-                }
-
-                do {
-                    try await retryAnalyzer.start(inputSequence: retryStream)
-                    try Task.checkCancellation()
-                    return
-                } catch {
-                    running = false
-                    retryContinuation.finish()
-                    resultTask?.cancel()
-                    await resultTask?.value
-                    resultTask = nil
-                    inputContinuation = nil
-                    self.analyzer = nil
-                    self.outputFormat = nil
-                    if error is CancellationError { throw error }
-                    throw SpeechRecognizerError.modelLoadFailed(error.localizedDescription)
-                }
-            }
-
-            throw SpeechRecognizerError.modelLoadFailed(error.localizedDescription)
+            throw error
         }
     }
 
@@ -388,9 +407,8 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         outputFormat = nil
     }
 
-    private func receive(_ result: SpeechTranscriber.Result) {
-        let text = String(result.text.characters)
-        let update = stateLock.withLock { assembler.receive(text: text, isFinal: result.isFinal) }
+    private func receive(text: String, isFinal: Bool) {
+        let update = stateLock.withLock { assembler.receive(text: text, isFinal: isFinal) }
         onUpdate?(update)
     }
 
@@ -407,12 +425,12 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     }
 
     private func supportedLocale() async throws -> Locale {
-        if let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) {
+        if let supported = await engineSupportedLocale(equivalentTo: locale) {
             return supported
         }
         // In case the speech daemon was cold or waking from sleep, retry once
         try? await Task.sleep(nanoseconds: 300_000_000)
-        guard let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) else {
+        guard let supported = await engineSupportedLocale(equivalentTo: locale) else {
             throw SpeechRecognizerError.modelUnavailable("The system speech model does not support locale \(locale.identifier).")
         }
         return supported

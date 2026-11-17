@@ -187,15 +187,16 @@ public actor VoiceTypingSession {
         guard generation == sessionGeneration else { return }
         do {
             let stableDelta = try reconciler.consume(update)
-            guard !stableDelta.isEmpty else { return }
-            if polishingMode == .verbatim {
-                typingOutput.append(stableDelta, completion: { [weak self] result in
-                    guard case .failure(let error) = result else { return }
-                    Task { await self?.fail(error, sessionGeneration: sessionGeneration) }
-                })
-            } else {
-                await polishingCoordinator.consume(stableDelta)
+            if polishingMode == .polished {
+                // A finished segment is typed now instead of waiting for the next one.
+                await polishingCoordinator.consume(stableDelta, endsSegment: update.endsSegment)
+                return
             }
+            guard !stableDelta.isEmpty else { return }
+            typingOutput.append(stableDelta, completion: { [weak self] result in
+                guard case .failure(let error) = result else { return }
+                Task { await self?.fail(error, sessionGeneration: sessionGeneration) }
+            })
         } catch {
             Task { await fail(error, sessionGeneration: sessionGeneration) }
         }

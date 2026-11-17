@@ -1,6 +1,6 @@
 import CoreGraphics
 
-/// Emits a single Unicode grapheme as a Quartz key-down/key-up pair.
+/// Emits text (one or more graphemes, at most 20 UTF-16 units) as a Quartz key-down/key-up pair.
 /// CGEvent's Unicode payload is layout-independent, but some apps ignore it.
 struct KeyboardEmitter {
     private let source: CGEventSource?

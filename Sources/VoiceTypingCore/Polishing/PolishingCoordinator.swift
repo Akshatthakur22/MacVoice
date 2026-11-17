@@ -46,15 +46,20 @@ public actor PolishingCoordinator {
     public func setErrorHandler(_ handler: ((Error) -> Void)?) { onError = handler }
     public func setTypingFailureHandler(_ handler: ((Error) -> Void)?) { onTypingFailure = handler }
 
-    public func consume(_ delta: String) {
-        guard !delta.isEmpty else { return }
+    /// - Parameter endsSegment: The recognizer finalized a segment; type the
+    ///   buffered text now rather than waiting for sentence punctuation that is
+    ///   followed by more speech.
+    public func consume(_ delta: String, endsSegment: Bool = false) {
+        guard !delta.isEmpty || endsSegment else { return }
         if mode == .verbatim {
             engine.append(delta, completion: { [weak self] result in
                 if case .failure(let error) = result { Task { await self?.onTypingFailure?(error) } }
             })
             return
         }
-        enqueue(buffer.append(delta))
+        var phrases = buffer.append(delta)
+        if endsSegment, let tail = buffer.flush() { phrases.append(tail) }
+        enqueue(phrases)
     }
 
     public func finish() async {

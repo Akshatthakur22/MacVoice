@@ -69,6 +69,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var accessibilityPollTimer: Timer?
     private var launchAtLoginCheckbox: NSButton!
     private var soundFeedbackCheckbox: NSButton!
+    private var compatibilityTypingCheckbox: NSButton!
     private var accessibilityStatusLabel: NSTextField!
     private var statusLine: NSMenuItem!
     private var toggleMenuItem: NSMenuItem!
@@ -197,8 +198,10 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.title = "MacVoice"
-            button.image = brandImage(named: "MacVoiceMenuBar") ?? NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "MacVoice status")
-            button.image?.isTemplate = true
+            let image = brandImage(named: "MacVoiceMenuBar") ?? NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "MacVoice status")
+            image?.size = NSSize(width: 18, height: 18) // 36 px asset = crisp at 2x
+            image?.isTemplate = true
+            button.image = image
             button.imagePosition = .imageLeading
             button.toolTip = "MacVoice voice typing status"
         }
@@ -229,7 +232,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func buildControlWindow() {
-        let iconImage = brandImage(named: "MacVoiceAppIcon")
+        // The bundle's .icns already contains every size; no separate PNG needed.
+        let iconImage = NSApplication.shared.applicationIconImage
             ?? NSImage(systemSymbolName: "mic.circle.fill", accessibilityDescription: "MacVoice")!
         let icon = NSImageView(image: iconImage)
         icon.imageScaling = .scaleProportionallyUpOrDown
@@ -383,6 +387,9 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let soundPref = UserDefaults.standard.object(forKey: "soundFeedbackEnabled") == nil ? true : UserDefaults.standard.bool(forKey: "soundFeedbackEnabled")
         soundFeedbackCheckbox.state = soundPref ? .on : .off
 
+        compatibilityTypingCheckbox = NSButton(checkboxWithTitle: "Type one character at a time (for apps that drop text)", target: self, action: #selector(toggleCompatibilityTyping(_:)))
+        compatibilityTypingCheckbox.state = UserDefaults.standard.bool(forKey: "typeOneCharacterAtATime") ? .on : .off
+
         let permissionsTitle = NSTextField(labelWithString: "Permissions & Setup")
         permissionsTitle.font = .systemFont(ofSize: 13, weight: .semibold)
         let accessHelp = NSTextField(wrappingLabelWithString: "Microphone access lets MacVoice hear you. Accessibility allows keyboard events to reach the active app. Live polling detects permissions immediately when toggled in System Settings.")
@@ -403,7 +410,7 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
         let settingsPage = makePage([
             appearanceLabel, appearancePicker,
-            generalTitle, launchAtLoginCheckbox, soundFeedbackCheckbox,
+            generalTitle, launchAtLoginCheckbox, soundFeedbackCheckbox, compatibilityTypingCheckbox,
             permissionsTitle, accessHelp, accessibilityStatusLabel, permissionsButtons
         ])
 
@@ -879,6 +886,12 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func toggleCompatibilityTyping(_ sender: NSButton) {
+        UserDefaults.standard.set(sender.state == .on, forKey: "typeOneCharacterAtATime")
+        setStatus(sender.state == .on ? "Typing one character at a time" : "Fast typing enabled")
+        rebuildSessionWhenIdle()
+    }
+
     @objc private func toggleSoundFeedback(_ sender: NSButton) {
         let enabled = sender.state == .on
         UserDefaults.standard.set(enabled, forKey: "soundFeedbackEnabled")
@@ -903,7 +916,10 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
             streamsVolatileWords: mode == .verbatim,
             contextualStrings: vocabulary.contextualStrings
         )
-        let engine = TypingEngine(interCharacterDelay: 0.005, newlineBehavior: .smartChatAware, smartLeadingSpace: true)
+        let engine = TypingEngine(
+            interCharacterDelay: 0.005, newlineBehavior: .smartChatAware, smartLeadingSpace: true,
+            charactersPerEvent: UserDefaults.standard.bool(forKey: "typeOneCharacterAtATime") ? 1 : 20
+        )
         let polisher = NativeSwiftTranscriptPolisher(locale: locale, replacements: vocabulary.replacements)
         let session = VoiceTypingSession(
             audioCapture: AudioCapture(), recognizer: recognizer, typingEngine: engine,

@@ -22,8 +22,7 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$BIN_DIR/VoiceTypingApp" "$APP_BUNDLE/Contents/MacOS/VoiceTypingApp"
 cp "$REPO_ROOT/Resources/VoiceTypingApp-Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 cp "$REPO_ROOT/Brand/Exports/MacVoice.icns" "$APP_BUNDLE/Contents/Resources/MacVoice.icns"
-cp "$REPO_ROOT/Brand/Exports/macvoice-icon-light-1024.png" "$APP_BUNDLE/Contents/Resources/MacVoiceAppIcon.png"
-cp "$REPO_ROOT/Brand/Exports/macvoice-symbol-mono-black-1024.png" "$APP_BUNDLE/Contents/Resources/MacVoiceMenuBar.png"
+cp "$REPO_ROOT/Brand/Exports/macvoice-menubar-36.png" "$APP_BUNDLE/Contents/Resources/MacVoiceMenuBar.png"
 if security find-certificate -c "$SIGNING_IDENTITY" "$HOME/Library/Keychains/login.keychain-db" >/dev/null 2>&1; then
   codesign --force --deep --sign "$SIGNING_IDENTITY" "$APP_BUNDLE"
 else
