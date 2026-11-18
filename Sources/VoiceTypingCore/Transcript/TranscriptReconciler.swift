@@ -30,12 +30,30 @@ public struct TranscriptReconciler {
             safeText = String(confirmed.dropLast())
         }
         let safeBytes = Array(safeText.utf8)
+        // After a segment end released the last grapheme, the next update
+        // withholds it again; that text is already typed, so nothing is new.
+        // (Both are prefixes of the confirmed text, so one extends the other.)
+        if emittedUTF8.starts(with: safeBytes) { return "" }
         guard safeBytes.starts(with: emittedUTF8) else {
             throw TranscriptReconciliationError.confirmedTextWasRevised
         }
         let delta = String(decoding: safeBytes.dropFirst(emittedUTF8.count), as: UTF8.self)
         emittedUTF8 = safeBytes
         return delta
+    }
+
+    /// Recovers from a revision without ending dictation: adopts `update` as
+    /// the new baseline, so later text continues from it. Text that was
+    /// revised is not retyped (keystrokes are append-only).
+    public mutating func resynchronize(to update: SpeechRecognitionUpdate) {
+        confirmedUTF8 = Array(update.confirmedTranscript.utf8)
+        let safeText = update.isFinal || update.endsSegment
+            ? update.confirmedTranscript
+            : String(update.confirmedTranscript.dropLast())
+        let safeBytes = Array(safeText.utf8)
+        // If more was typed than the revised text holds, skip all of it so
+        // nothing is typed twice.
+        emittedUTF8 = safeBytes.count >= emittedUTF8.count ? safeBytes : confirmedUTF8
     }
 
     /// Reset after a recognition session ends.

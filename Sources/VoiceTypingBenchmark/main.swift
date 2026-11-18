@@ -63,6 +63,22 @@ enum VoiceTypingBenchmark {
             samples += [Float](repeating: 0, count: Int(gap * sampleRate))
         }
 
+        // Quiet-speech simulation: scale the voice (--input-gain-db=-30 is
+        // roughly a whisper or a distant mic) and add microphone hiss
+        // (--noise-db=-60). Seeded, so runs are comparable.
+        let inputGain = Float(pow(10, (Double(option("--input-gain-db", args) ?? "0") ?? 0) / 20))
+        let noiseDB = Double(option("--noise-db", args) ?? "")
+        var noiseState: UInt64 = 0x2545_F491_4F6C_DD1D
+        let noiseAmplitude = noiseDB.map { Float(pow(10, $0 / 20)) * 1.732 } ?? 0 // uniform noise with that RMS
+        for index in samples.indices {
+            var sample = samples[index] * inputGain
+            if noiseAmplitude > 0 {
+                noiseState ^= noiseState << 13; noiseState ^= noiseState >> 7; noiseState ^= noiseState << 17
+                sample += (Float(noiseState % 20_001) / 10_000 - 1) * noiseAmplitude
+            }
+            samples[index] = sample
+        }
+
         let recognizer = AppleSpeechAnalyzerRecognizer(
             locale: locale, engine: engine, streamsVolatileWords: mode == .verbatim, contextualStrings: words)
         let capture = FakeMicrophone()

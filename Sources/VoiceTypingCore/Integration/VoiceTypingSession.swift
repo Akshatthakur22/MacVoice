@@ -77,6 +77,36 @@ public actor VoiceTypingSession {
         let ticket = generation
         setState(.starting)
         reconciler.reset()
+
+        // Microphone frames waiting for the recognizer. Generous so a brief
+        // stall (speech daemon busy, CPU contention) never ends dictation.
+        let (audioStream, audioStreamContinuation) = AsyncStream<PCMFrame>.makeStream(
+            bufferingPolicy: .bufferingOldest(4_096)
+        )
+        let (updateStream, updateStreamContinuation) = AsyncStream<SpeechRecognitionUpdate>.makeStream(
+            bufferingPolicy: .bufferingNewest(64)
+        )
+        audioContinuation = audioStreamContinuation
+        updateContinuation = updateStreamContinuation
+        audioCapture.onError = { [weak self] error in
+            Task { await self?.fail(error, sessionGeneration: ticket) }
+        }
+        audioCapture.onFrame = { [weak self] frame in
+            guard case .dropped = audioStreamContinuation.yield(frame) else { return }
+            Task { await self?.fail(VoiceTypingSessionError.audioBufferOverrun, sessionGeneration: ticket) }
+        }
+
+        do {
+            // Open the microphone first. People start talking the moment they
+            // press the shortcut; audio captured while the recognizer starts is
+            // queued and transcribed instead of lost (losing it cut the first
+            // syllable: "enhance" became "hence").
+            try audioCapture.start()
+        } catch {
+            if cleanupTask == nil { await fail(error, sessionGeneration: ticket) } else { await waitForCleanup() }
+            throw error
+        }
+
         let insertion = await typingOutput.beginDictation()
         if polishingMode == .polished {
             await polishingCoordinator.begin(context: insertion)
@@ -91,43 +121,14 @@ public actor VoiceTypingSession {
             }
         }
 
-        let (audioStream, audioStreamContinuation) = AsyncStream<PCMFrame>.makeStream(
-            bufferingPolicy: .bufferingOldest(256)
-        )
-        let (updateStream, updateStreamContinuation) = AsyncStream<SpeechRecognitionUpdate>.makeStream(
-            bufferingPolicy: .bufferingNewest(64)
-        )
-        audioContinuation = audioStreamContinuation
-        updateContinuation = updateStreamContinuation
-
-        audioTask = Task { [weak self] in
-            for await frame in audioStream {
-                guard let self else { return }
-                do {
-                    try await self.consume(frame)
-                } catch {
-                    // Cleanup runs in another task so it can cancel/join this consumer.
-                    Task { await self.fail(error, sessionGeneration: ticket) }
-                    return
-                }
-            }
-        }
         updateTask = Task { [weak self] in
             for await update in updateStream {
                 await self?.receive(update, sessionGeneration: ticket)
             }
         }
-
         recognizer.onUpdate = { updateStreamContinuation.yield($0) }
         recognizer.onError = { [weak self] error in
             Task { await self?.fail(error, sessionGeneration: ticket) }
-        }
-        audioCapture.onError = { [weak self] error in
-            Task { await self?.fail(error, sessionGeneration: ticket) }
-        }
-        audioCapture.onFrame = { [weak self] frame in
-            guard case .dropped = audioStreamContinuation.yield(frame) else { return }
-            Task { await self?.fail(VoiceTypingSessionError.audioBufferOverrun, sessionGeneration: ticket) }
         }
 
         let startup = Task { try await recognizer.start() }
@@ -136,10 +137,18 @@ public actor VoiceTypingSession {
             try await startup.value
             if generation == ticket { recognizerStartTask = nil }
             guard generation == ticket, state == .starting, cleanupTask == nil else { return }
-            try audioCapture.start()
-            guard generation == ticket, state == .starting, cleanupTask == nil else {
-                audioCapture.stop()
-                return
+            // The recognizer is ready: feed it the queued audio, oldest first.
+            audioTask = Task { [weak self] in
+                for await frame in audioStream {
+                    guard let self else { return }
+                    do {
+                        try await self.consume(frame)
+                    } catch {
+                        // Cleanup runs in another task so it can cancel/join this consumer.
+                        Task { await self.fail(error, sessionGeneration: ticket) }
+                        return
+                    }
+                }
             }
             setState(.listening)
         } catch {
@@ -186,7 +195,15 @@ public actor VoiceTypingSession {
     private func receive(_ update: SpeechRecognitionUpdate, sessionGeneration: UInt64) async {
         guard generation == sessionGeneration else { return }
         do {
-            let stableDelta = try reconciler.consume(update)
+            let stableDelta: String
+            do {
+                stableDelta = try reconciler.consume(update)
+            } catch TranscriptReconciliationError.confirmedTextWasRevised {
+                // A transcript revision must never end dictation: continue
+                // from the revised text instead.
+                reconciler.resynchronize(to: update)
+                return
+            }
             if polishingMode == .polished {
                 // A finished segment is typed now instead of waiting for the next one.
                 await polishingCoordinator.consume(stableDelta, endsSegment: update.endsSegment)

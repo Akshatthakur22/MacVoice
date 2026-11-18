@@ -69,7 +69,15 @@ public final class AudioCapture: AudioCapturing {
     private let lock = NSLock()
     private let framesPerBuffer: AVAudioFrameCount
     private var running = false
+    /// Bumped on every start/stop so a delayed restart from an old
+    /// configuration change cannot revive a stopped capture.
+    private var runGeneration: UInt64 = 0
     private var configurationObserver: (any NSObjectProtocol)?
+    private let restartQueue = DispatchQueue(label: "MacVoice.AudioCapture.restart")
+    /// Delays between attempts to restart after the input device changes.
+    /// Bluetooth headsets can report no input for a moment while they switch
+    /// to their microphone profile.
+    private static let restartDelays: [Double] = [0, 0.1, 0.25, 0.5, 1.0]
 
     public init(framesPerBuffer: AVAudioFrameCount = 512) {
         self.framesPerBuffer = max(1, framesPerBuffer)
@@ -102,11 +110,12 @@ public final class AudioCapture: AudioCapturing {
             throw AudioCaptureError.noInputDevice
         }
 
-        installTap(on: input, format: format)
+        installTap(on: input)
         engine.prepare()
         do {
             try engine.start()
             running = true
+            runGeneration &+= 1
         } catch {
             input.removeTap(onBus: 0)
             throw AudioCaptureError.engineStartFailed(error.localizedDescription)
@@ -120,39 +129,67 @@ public final class AudioCapture: AudioCapturing {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         running = false
+        runGeneration &+= 1
     }
 
+    /// The input device or its format changed (headset connected, Bluetooth
+    /// profile switch, sample-rate change). Restart capture on the new
+    /// device, retrying briefly before reporting an error.
     private func handleConfigurationChange() {
         lock.lock()
-        defer { lock.unlock() }
-        guard running else { return }
-
-        let input = engine.inputNode
-        input.removeTap(onBus: 0)
+        guard running else { lock.unlock(); return }
+        let generation = runGeneration
+        engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        lock.unlock()
+        restart(generation: generation, attempt: 0)
+    }
 
-        let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0 else {
-            running = false
-            onError?(.noInputDevice)
-            return
-        }
-
-        installTap(on: input, format: format)
-        engine.prepare()
-        do {
-            try engine.start()
-        } catch {
-            input.removeTap(onBus: 0)
-            running = false
-            onError?(.engineStartFailed(error.localizedDescription))
+    private func restart(generation: UInt64, attempt: Int) {
+        let delays = Self.restartDelays
+        restartQueue.asyncAfter(deadline: .now() + delays[attempt]) { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            // Stopped, or restarted by a newer change, in the meantime.
+            guard self.running, self.runGeneration == generation else { self.lock.unlock(); return }
+            let input = self.engine.inputNode
+            let format = input.outputFormat(forBus: 0)
+            var failure: AudioCaptureError?
+            if format.sampleRate > 0, format.channelCount > 0 {
+                self.installTap(on: input)
+                self.engine.prepare()
+                do {
+                    try self.engine.start()
+                    self.lock.unlock()
+                    return
+                } catch {
+                    input.removeTap(onBus: 0)
+                    failure = .engineStartFailed(error.localizedDescription)
+                }
+            } else {
+                failure = .noInputDevice
+            }
+            if attempt + 1 < delays.count {
+                self.lock.unlock()
+                self.restart(generation: generation, attempt: attempt + 1)
+                return
+            }
+            self.running = false
+            self.runGeneration &+= 1
+            let handler = self.onError
+            self.lock.unlock()
+            if let failure { handler?(failure) }
         }
     }
 
-    private func installTap(on input: AVAudioNode, format: AVAudioFormat) {
+    /// Taps the input in its current hardware format (`format: nil`). Passing
+    /// a format read earlier can raise an Objective-C exception that crashes
+    /// the app if the device changed in between.
+    private func installTap(on input: AVAudioInputNode) {
         let frameHandler = onFrame
         let errorHandler = onError
-        input.installTap(onBus: 0, bufferSize: framesPerBuffer, format: format) { buffer, _ in
+        input.removeTap(onBus: 0) // installing a second tap on a bus also raises
+        input.installTap(onBus: 0, bufferSize: framesPerBuffer, format: nil) { buffer, _ in
             guard let channels = buffer.floatChannelData else {
                 errorHandler?(.unsupportedAudioFormat)
                 return

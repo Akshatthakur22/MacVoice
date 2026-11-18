@@ -35,7 +35,6 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
     private var converterInputFormat: AVAudioFormat?
     private var cachedInputFormat: AVAudioFormat?
     private var cachedInputBuffer: AVAudioPCMBuffer?
-    private var cachedConvertedBuffer: AVAudioPCMBuffer?
     private var outputSampleOffset: Int64 = 0
     private var running = false
 
@@ -248,9 +247,17 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         }
         try Task.checkCancellation()
 
-        let (inputStream, continuation) = AsyncStream<AnalyzerInput>.makeStream(bufferingPolicy: .bufferingOldest(256))
+        // Holds converted audio while the analyzer catches up (it consumes in
+        // bursts). Large enough to ride out a busy speech daemon for many seconds.
+        let (inputStream, continuation) = AsyncStream<AnalyzerInput>.makeStream(
+            bufferingPolicy: .bufferingOldest(Self.analyzerInputCapacity))
         let analyzer = SpeechAnalyzer(modules: modules, options: nil)
         await applyContextualStrings(to: analyzer)
+        // Load the model before audio arrives so the first words are not
+        // recognized late. The microphone is already capturing, so this
+        // cannot lose speech. A failure here only means a slower first result.
+        try? await analyzer.prepareToAnalyze(in: outputFormat)
+        try Task.checkCancellation()
         self.analyzer = analyzer
         self.outputFormat = outputFormat
         self.inputContinuation = continuation
@@ -337,24 +344,22 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             guard let newConverter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
                 throw SpeechRecognizerError.unsupportedAudioFormat
             }
+            // Stereo and multi-channel mics: mix every channel into the mono
+            // model input instead of keeping only the first one.
+            newConverter.downmix = true
+            newConverter.sampleRateConverterQuality = AVAudioQuality.max.rawValue
             converter = newConverter
             converterInputFormat = inputFormat
         }
         guard let converter else { throw SpeechRecognizerError.unsupportedAudioFormat }
         let ratio = outputFormat.sampleRate / inputFormat.sampleRate
         let capacity = AVAudioFrameCount(ceil(Double(frame.frameCount) * ratio) + 32)
-        let converted: AVAudioPCMBuffer
-        if let cachedConv = cachedConvertedBuffer,
-           cachedConv.format == outputFormat,
-           cachedConv.frameCapacity >= capacity {
-            converted = cachedConv
-            converted.frameLength = 0
-        } else {
-            guard let newConv = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: max(capacity, 2048)) else {
-                throw SpeechRecognizerError.unsupportedAudioFormat
-            }
-            converted = newConv
-            cachedConvertedBuffer = newConv
+        // A new buffer per chunk: the analyzer reads queued buffers later on
+        // its own thread, so a reused buffer would be overwritten before it is
+        // read (garbled or repeated audio). The input buffer above is safe to
+        // reuse because the converter copies from it synchronously.
+        guard let converted = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else {
+            throw SpeechRecognizerError.unsupportedAudioFormat
         }
 
         var conversionError: NSError?
@@ -403,7 +408,6 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         converterInputFormat = nil
         cachedInputFormat = nil
         cachedInputBuffer = nil
-        cachedConvertedBuffer = nil
         outputFormat = nil
     }
 
@@ -419,6 +423,10 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
         context.contextualStrings[.general] = contextualStrings
         try? await analyzer.setContext(context)
     }
+
+    /// Converted audio chunks queued for the analyzer before dictation fails
+    /// rather than silently dropping speech.
+    static let analyzerInputCapacity = 4_096
 
     public static func normalizedLocaleID(_ identifier: String) -> String {
         identifier.replacingOccurrences(of: "-", with: "_").lowercased()

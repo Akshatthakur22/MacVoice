@@ -90,7 +90,17 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     private var vocabularyStatus: NSTextField!
     /// Settings changed while dictating; rebuild the session once it is idle.
     private var needsSessionRebuild = false
+    /// Menu bar recording indicator: pulse and elapsed time while listening.
+    private var menuBarPulseTimer: Timer?
+    private var listeningStartedAt: Date?
+    private var menuBarPulseDimmed = false
 
+    /// Replaces the old "typeOneCharacterAtATime" key so everyone gets the
+    /// letter-by-letter typing animation back by default.
+    private static let animatedTypingKey = "animatedTyping"
+    private static var animatedTyping: Bool {
+        UserDefaults.standard.object(forKey: animatedTypingKey) as? Bool ?? true
+    }
     private static let vocabularyWordsKey = "vocabularyWords"
     private static let vocabularyReplacementsKey = "vocabularyReplacements"
     private static let defaultWordsText = "# One word or phrase per line. Examples:\nAPI\nMacVoice"
@@ -187,23 +197,27 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func systemDidWake(_ notification: Notification) {
+        // Re-arm the session on wake to refresh stale speech-daemon connections,
+        // but never replace a session that is still running (it would keep the
+        // microphone open with no way to stop it).
+        rebuildSessionWhenIdle()
         Task { @MainActor in
-            // Re-arm session cleanly on system wake to refresh any stale XPC daemon connections.
-            await self.configureSession(locale: self.currentConfiguredLocale ?? Locale.current)
-            self.setStatus("Idle · \(Locale.current.identifier) · shortcut ready")
+            if await self.session?.state == .idle {
+                self.setStatus("Idle · \(Locale.current.identifier) · shortcut ready")
+            }
         }
     }
 
     private func buildMenu() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.title = "MacVoice"
-            let image = brandImage(named: "MacVoiceMenuBar") ?? NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "MacVoice status")
-            image?.size = NSSize(width: 18, height: 18) // 36 px asset = crisp at 2x
-            image?.isTemplate = true
-            button.image = image
+            // Icon only, like system menu bar items; the elapsed time appears
+            // next to it while listening.
+            button.image = MenuBarIcon.image(for: .idle)
             button.imagePosition = .imageLeading
-            button.toolTip = "MacVoice voice typing status"
+            button.title = ""
+            button.font = .monospacedDigitSystemFont(ofSize: NSFont.menuBarFont(ofSize: 0).pointSize, weight: .regular)
+            button.toolTip = "MacVoice"
         }
 
         let menu = NSMenu()
@@ -214,18 +228,21 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
 
         toggleMenuItem = NSMenuItem(title: "Start Dictation (\(shortcutDisplay))", action: #selector(toggleFromMenu), keyEquivalent: "")
         toggleMenuItem.target = self
+        toggleMenuItem.image = Self.menuSymbol("mic")
         menu.addItem(toggleMenuItem)
 
-        let settings = NSMenuItem(title: "MacVoice Settings…", action: #selector(openSettings), keyEquivalent: "")
+        let settings = NSMenuItem(title: "MacVoice Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
+        settings.image = Self.menuSymbol("gearshape")
         menu.addItem(settings)
 
         let permission = NSMenuItem(title: "Microphone Access…", action: #selector(requestMicrophoneAccess), keyEquivalent: "")
         permission.target = self
+        permission.image = Self.menuSymbol("lock.shield")
         menu.addItem(permission)
 
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit MacVoice", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
         statusItem.menu = menu
@@ -387,8 +404,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         let soundPref = UserDefaults.standard.object(forKey: "soundFeedbackEnabled") == nil ? true : UserDefaults.standard.bool(forKey: "soundFeedbackEnabled")
         soundFeedbackCheckbox.state = soundPref ? .on : .off
 
-        compatibilityTypingCheckbox = NSButton(checkboxWithTitle: "Type one character at a time (for apps that drop text)", target: self, action: #selector(toggleCompatibilityTyping(_:)))
-        compatibilityTypingCheckbox.state = UserDefaults.standard.bool(forKey: "typeOneCharacterAtATime") ? .on : .off
+        compatibilityTypingCheckbox = NSButton(checkboxWithTitle: "Animated typing (letter by letter). Turn off to insert text instantly.", target: self, action: #selector(toggleCompatibilityTyping(_:)))
+        compatibilityTypingCheckbox.state = Self.animatedTyping ? .on : .off
 
         let permissionsTitle = NSTextField(labelWithString: "Permissions & Setup")
         permissionsTitle.font = .systemFont(ofSize: 13, weight: .semibold)
@@ -887,8 +904,8 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleCompatibilityTyping(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "typeOneCharacterAtATime")
-        setStatus(sender.state == .on ? "Typing one character at a time" : "Fast typing enabled")
+        UserDefaults.standard.set(sender.state == .on, forKey: Self.animatedTypingKey)
+        setStatus(sender.state == .on ? "Animated typing enabled" : "Instant typing enabled")
         rebuildSessionWhenIdle()
     }
 
@@ -918,7 +935,9 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         )
         let engine = TypingEngine(
             interCharacterDelay: 0.005, newlineBehavior: .smartChatAware, smartLeadingSpace: true,
-            charactersPerEvent: UserDefaults.standard.bool(forKey: "typeOneCharacterAtATime") ? 1 : 20
+            // Letter by letter shows text being typed and works in every app;
+            // instant mode sends up to 20 characters per key event.
+            charactersPerEvent: Self.animatedTyping ? 1 : 20
         )
         let polisher = NativeSwiftTranscriptPolisher(locale: locale, replacements: vocabulary.replacements)
         let session = VoiceTypingSession(
@@ -1033,9 +1052,63 @@ private final class VoiceTypingAppDelegate: NSObject, NSApplicationDelegate {
         else if normalized.contains("finish") || normalized.contains("stopp") { statusTitle = "Finishing" }
         else if normalized.contains("fail") || normalized.contains("denied") || normalized.contains("unavailable") || normalized.contains("enable macvoice") || normalized.contains("could not") { statusTitle = "Attention" }
         else { statusTitle = "Ready" }
-        statusItem?.button?.title = "MacVoice · \(statusTitle)"
+        updateMenuBarItem(statusTitle: statusTitle, detail: text)
         statusSymbol?.contentTintColor = statusTitle == "Attention" ? .systemOrange : (statusTitle == "Listening" ? .systemRed : .tertiaryLabelColor)
         statusItem?.button?.setAccessibilityLabel("MacVoice, \(statusTitle)")
         statusLine?.setAccessibilityLabel("MacVoice status: \(text)")
+    }
+
+    // MARK: Menu bar indicator
+
+    private static func menuSymbol(_ name: String) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil)
+    }
+
+    private func updateMenuBarItem(statusTitle: String, detail: String) {
+        guard let button = statusItem?.button else { return }
+        button.toolTip = "MacVoice · \(detail)"
+        toggleMenuItem?.image = Self.menuSymbol(statusTitle == "Listening" ? "stop.circle" : "mic")
+        if statusTitle == "Listening" {
+            if listeningStartedAt == nil { startListeningIndicator() }
+            return
+        }
+        stopListeningIndicator()
+        let state: MenuBarIcon.State
+        switch statusTitle {
+        case "Attention": state = .attention
+        case "Starting", "Finishing": state = .busy
+        default: state = .idle
+        }
+        button.image = MenuBarIcon.image(for: state)
+        button.title = ""
+    }
+
+    private func startListeningIndicator() {
+        listeningStartedAt = Date()
+        menuBarPulseDimmed = false
+        renderListeningIndicator()
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] timer in
+            Task { @MainActor [weak self] in
+                guard let self, self.listeningStartedAt != nil else { timer.invalidate(); return }
+                self.menuBarPulseDimmed.toggle()
+                self.renderListeningIndicator()
+            }
+        }
+        // .common keeps the pulse running while the menu is open.
+        RunLoop.main.add(timer, forMode: .common)
+        menuBarPulseTimer = timer
+    }
+
+    private func stopListeningIndicator() {
+        menuBarPulseTimer?.invalidate()
+        menuBarPulseTimer = nil
+        listeningStartedAt = nil
+    }
+
+    private func renderListeningIndicator() {
+        guard let button = statusItem?.button, let start = listeningStartedAt else { return }
+        let seconds = Int(Date().timeIntervalSince(start))
+        button.image = MenuBarIcon.image(for: .listening(dimmed: menuBarPulseDimmed))
+        button.title = String(format: " %d:%02d", seconds / 60, seconds % 60)
     }
 }
