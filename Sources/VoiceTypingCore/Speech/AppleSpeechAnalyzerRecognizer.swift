@@ -288,16 +288,23 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             throw SpeechRecognizerError.stopped
         }
 
+        guard frame.channelCount > 0, frame.sampleRate > 0 else {
+            throw SpeechRecognizerError.unsupportedAudioFormat
+        }
+
+        // Always feed the converter mono. Mic arrays can report 3+ channels
+        // (e.g. a MacBook while a call app has voice processing on), and
+        // AVAudioFormat(commonFormat:sampleRate:channels:interleaved:) returns
+        // nil for more than 2 channels without an explicit channel layout.
         let inputFormat: AVAudioFormat
         if let cached = cachedInputFormat,
-           cached.sampleRate == frame.sampleRate,
-           cached.channelCount == AVAudioChannelCount(frame.channelCount) {
+           cached.sampleRate == frame.sampleRate {
             inputFormat = cached
         } else {
             guard let newFormat = AVAudioFormat(
                 commonFormat: .pcmFormatFloat32,
                 sampleRate: frame.sampleRate,
-                channels: AVAudioChannelCount(frame.channelCount),
+                channels: 1,
                 interleaved: false
             ) else {
                 throw SpeechRecognizerError.unsupportedAudioFormat
@@ -333,9 +340,16 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
                 }
             }
         } else {
-            for channel in 0..<frame.channelCount {
+            // Mix every channel into mono instead of keeping only the first.
+            let channels = frame.channelCount
+            let scale = 1 / Float(channels)
+            let mono = channelData[0]
+            frame.samples.withUnsafeBufferPointer { src in
                 for index in 0..<frame.frameCount {
-                    channelData[channel][index] = frame.samples[index * frame.channelCount + channel]
+                    let base = index * channels
+                    var sum: Float = 0
+                    for channel in 0..<channels { sum += src[base + channel] }
+                    mono[index] = sum * scale
                 }
             }
         }
@@ -344,9 +358,6 @@ public final class AppleSpeechAnalyzerRecognizer: SpeechRecognizer {
             guard let newConverter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
                 throw SpeechRecognizerError.unsupportedAudioFormat
             }
-            // Stereo and multi-channel mics: mix every channel into the mono
-            // model input instead of keeping only the first one.
-            newConverter.downmix = true
             newConverter.sampleRateConverterQuality = AVAudioQuality.max.rawValue
             converter = newConverter
             converterInputFormat = inputFormat

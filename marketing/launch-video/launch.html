@@ -1,0 +1,481 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MacVoice Launch Video</title>
+<style>
+  :root {
+    --blue: #0A84FF; --blue2: #0071E3; --sky: #64D2FF;
+    --navy: #0B1220; --surface: #151922; --graphite: #1D1D1F;
+    --muted: #8A94A6; --green: #30D158; --red: #FF453A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--navy); }
+  body { font-family: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--navy); }
+  .layer { position: absolute; inset: 0; opacity: 0; will-change: opacity, transform; }
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .blob { position: absolute; border-radius: 50%; opacity: .85; }
+  .mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+
+  /* Hook */
+  .hook { font-size: 104px; font-weight: 700; letter-spacing: -2.5px; line-height: 1.08; }
+  .hook .w { display: inline-block; opacity: 0; }
+  .grad { background: linear-gradient(90deg, #64D2FF, #0A84FF); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* Logo */
+  #logoIcon { width: 260px; height: 260px; border-radius: 58px; box-shadow: 0 30px 80px rgba(10,132,255,.45); }
+  #wordmark { font-size: 132px; font-weight: 700; letter-spacing: -4px; margin-top: 44px; }
+  #tagline { font-size: 48px; font-weight: 500; color: #C9D4E5; margin-top: 18px; letter-spacing: -0.5px; }
+  #tagline span { display: inline-block; opacity: 0; margin: 0 10px; }
+
+  /* Desktop */
+  #desktop { background: radial-gradient(1400px 900px at 20% 10%, #1C3B7A 0%, transparent 60%), radial-gradient(1200px 900px at 90% 100%, #0E5E8F 0%, transparent 55%), linear-gradient(160deg, #0E1A33, #0B1220 70%); }
+  .menubar { position: absolute; top: 0; left: 0; right: 0; height: 40px; background: rgba(20,26,40,.55); backdrop-filter: blur(20px); display: flex; align-items: center; padding: 0 22px; font-size: 19px; font-weight: 500; color: #E6EBF3; gap: 30px; }
+  .menubar b { font-weight: 700; }
+  .menubar .right { margin-left: auto; display: flex; gap: 22px; align-items: center; }
+  .mbmic { width: 34px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .window { position: absolute; background: #FBFBFD; border-radius: 22px; box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08); color: #1D1D1F; overflow: hidden; }
+  .titlebar { height: 56px; display: flex; align-items: center; padding: 0 22px; gap: 10px; border-bottom: 1px solid #E6E8EC; background: #F3F4F7; }
+  .dot { width: 15px; height: 15px; border-radius: 50%; }
+  .titlebar .t { margin-left: 18px; font-weight: 600; font-size: 19px; color: #3A3F4A; }
+  .field { display: flex; padding: 16px 34px; border-bottom: 1px solid #ECEEF2; font-size: 22px; }
+  .field .k { color: #8A90A0; width: 110px; }
+  .body { padding: 30px 34px; font-size: 32px; line-height: 1.5; color: #1D1D1F; white-space: pre-wrap; }
+  .cursor { display: inline-block; width: 3px; height: 1.1em; background: var(--blue); vertical-align: -0.18em; margin-left: 2px; border-radius: 2px; }
+
+  .steps { position: absolute; right: 120px; top: 300px; width: 520px; }
+  .step { display: flex; gap: 26px; align-items: flex-start; margin-bottom: 54px; opacity: .28; }
+  .step .n { flex: none; width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; }
+  .step .s { font-size: 40px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.15; }
+  .step .d { font-size: 24px; color: #AEB8C8; margin-top: 8px; font-weight: 500; line-height: 1.35; }
+
+  .keys { position: absolute; display: flex; gap: 16px; }
+  .key { min-width: 96px; height: 96px; padding: 0 28px; border-radius: 18px; background: linear-gradient(#FFFFFF, #E9ECF1); color: #1D1D1F; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 600; box-shadow: 0 8px 0 #B9C0CB, 0 18px 40px rgba(0,0,0,.45); }
+  .key.wide { min-width: 300px; font-size: 32px; }
+
+  .hud { position: absolute; height: 84px; padding: 0 30px 0 22px; border-radius: 42px; background: rgba(18,22,32,.92); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 20px 60px rgba(0,0,0,.5); display: flex; align-items: center; gap: 18px; color: #fff; font-size: 24px; font-weight: 600; }
+  .hud .micdot { width: 48px; height: 48px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; }
+  .bars { display: flex; gap: 6px; align-items: center; height: 44px; }
+  .bars i { display: block; width: 6px; border-radius: 3px; background: linear-gradient(var(--sky), var(--blue)); }
+
+  /* Section headers */
+  .eyebrow { display: inline-block; padding: 10px 22px; border-radius: 40px; background: rgba(10,132,255,.16); color: var(--sky); font-size: 24px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+  .h1 { font-size: 76px; font-weight: 700; letter-spacing: -2px; line-height: 1.08; margin-top: 22px; }
+  .sub { font-size: 30px; color: #AEB8C8; margin-top: 18px; font-weight: 500; line-height: 1.4; }
+
+  /* Polish */
+  .card { position: absolute; border-radius: 28px; padding: 40px 44px; }
+  .card .lbl { font-size: 22px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 22px; }
+  .said { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+  .said .txt { font-size: 36px; line-height: 1.55; color: #D5DCE8; }
+  .typed { background: #FBFBFD; color: #1D1D1F; box-shadow: 0 30px 90px rgba(0,0,0,.45); }
+  .typed .txt { font-size: 36px; line-height: 1.55; white-space: pre-wrap; }
+  .tok { display: inline; border-radius: 8px; padding: 0 4px; margin: 0 -4px; }
+  .tok.filler { text-decoration-thickness: 4px; }
+  .arrow { position: absolute; width: 90px; height: 90px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 40px rgba(10,132,255,.5); }
+  .chips { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 22px; }
+  .chip { padding: 16px 30px; border-radius: 40px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); font-size: 26px; font-weight: 600; color: #E6EBF3; opacity: 0; }
+  .chip b { color: var(--sky); }
+
+  /* Chat */
+  .chat .side { position: absolute; left: 0; top: 56px; bottom: 0; width: 250px; background: #F1F2F6; border-right: 1px solid #E3E5EA; padding: 26px 22px; font-size: 21px; color: #5A6070; }
+  .chat .side div { padding: 9px 12px; border-radius: 10px; margin-bottom: 4px; }
+  .chat .side .on { background: #DCE9FF; color: #0A5BD6; font-weight: 600; }
+  .msg { display: flex; gap: 18px; margin-bottom: 26px; }
+  .av { flex: none; width: 54px; height: 54px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 22px; }
+  .msg .nm { font-weight: 700; font-size: 22px; } .msg .nm span { font-weight: 500; color: #9AA0AE; font-size: 18px; margin-left: 10px; }
+  .msg .tx { font-size: 25px; line-height: 1.45; color: #2A2E37; white-space: pre-wrap; margin-top: 2px; }
+  .composer { position: absolute; left: 280px; right: 30px; bottom: 28px; border: 2px solid #D5D9E2; border-radius: 16px; padding: 18px 22px; font-size: 26px; line-height: 1.45; white-space: pre-wrap; min-height: 74px; background: #fff; }
+  .toast { position: absolute; padding: 18px 28px; border-radius: 20px; background: rgba(18,22,32,.95); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 20px 60px rgba(0,0,0,.5); font-size: 26px; font-weight: 600; display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+  .kbd { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 10px; background: #fff; color: #1D1D1F; font-weight: 700; font-size: 22px; box-shadow: 0 3px 0 #B9C0CB; }
+
+  /* Clipboard */
+  .kbrow { position: absolute; display: flex; gap: 12px; }
+  .kc { width: 78px; height: 78px; border-radius: 14px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 600; color: #C9D4E5; }
+  .clip { position: absolute; border-radius: 26px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); padding: 34px 38px; }
+
+  /* Specs */
+  .grid { position: absolute; left: 160px; right: 160px; top: 380px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+  .tile { border-radius: 26px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.12); padding: 38px 40px; opacity: 0; }
+  .tile .big { font-size: 64px; font-weight: 800; letter-spacing: -2px; }
+  .tile .cap { font-size: 25px; color: #AEB8C8; margin-top: 8px; font-weight: 500; line-height: 1.35; }
+
+  /* CTA */
+  #ctaIcon { width: 190px; height: 190px; border-radius: 42px; box-shadow: 0 30px 80px rgba(10,132,255,.45); }
+  .price { display: inline-flex; gap: 16px; align-items: center; margin-top: 46px; padding: 20px 38px; border-radius: 60px; background: var(--blue); font-size: 36px; font-weight: 700; box-shadow: 0 18px 50px rgba(10,132,255,.45); }
+  .url { font-size: 40px; font-weight: 600; margin-top: 34px; color: #fff; letter-spacing: -0.5px; }
+  .fine { font-size: 24px; color: #8A94A6; margin-top: 16px; font-weight: 500; }
+  #fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <!-- ambient background -->
+  <div id="bg" class="layer" style="opacity:1">
+    <div class="blob" id="b1" style="width:1400px;height:1400px;background:radial-gradient(circle, rgba(10,132,255,.75) 0%, rgba(10,132,255,.25) 35%, transparent 68%);"></div>
+    <div class="blob" id="b2" style="width:1300px;height:1300px;background:radial-gradient(circle, rgba(14,94,143,.9) 0%, rgba(14,94,143,.3) 35%, transparent 68%);"></div>
+    <div class="blob" id="b3" style="width:1100px;height:1100px;background:radial-gradient(circle, rgba(61,46,158,.6) 0%, rgba(61,46,158,.2) 35%, transparent 68%);"></div>
+  </div>
+
+  <!-- S1 Hook -->
+  <div id="s1" class="layer center">
+    <div class="hook" id="hookA"></div>
+    <div class="hook" id="hookB" style="position:absolute"></div>
+  </div>
+
+  <!-- S2 Logo -->
+  <div id="s2" class="layer center">
+    <svg id="logoIcon" viewBox="0 0 1024 1024"></svg>
+    <div id="wordmark">MacVoice</div>
+    <div id="tagline"><span>Speak.</span><span>Type.</span><span class="grad">Done.</span></div>
+  </div>
+
+  <!-- S3 Demo -->
+  <div id="s3" class="layer">
+    <div class="layer" id="desktop" style="opacity:1"></div>
+    <div class="menubar">
+      <b>Mail</b><span>File</span><span>Edit</span><span>View</span><span>Message</span><span>Window</span>
+      <div class="right">
+        <div class="mbmic" id="mbmic"></div>
+        <span>Wed 9:41</span>
+      </div>
+    </div>
+    <div class="window" id="mailWin" style="left:110px; top:120px; width:1080px; height:820px;">
+      <div class="titlebar"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div><div class="t">New Message</div></div>
+      <div class="field"><div class="k">To:</div><div>Product Team</div></div>
+      <div class="field"><div class="k">Subject:</div><div style="font-weight:600">Launch update</div></div>
+      <div class="body" id="mailBody"></div>
+    </div>
+    <div class="steps">
+      <div class="step" id="st1"><div class="n">1</div><div><div class="s">Press <span class="mono" style="font-size:36px">⌃⌥Space</span></div><div class="d">From any app, anywhere on your Mac.</div></div></div>
+      <div class="step" id="st2"><div class="n">2</div><div><div class="s">Just speak</div><div class="d">Naturally, at your own pace.</div></div></div>
+      <div class="step" id="st3"><div class="n">3</div><div><div class="s">Words land at your cursor</div><div class="d">Live, as you talk. No copy, no paste.</div></div></div>
+    </div>
+    <div class="keys" id="keys" style="left:330px; top:470px;">
+      <div class="key">⌃</div><div class="key">⌥</div><div class="key wide">space</div>
+    </div>
+    <div class="hud" id="hud" style="left:400px; top:860px;">
+      <div class="micdot" id="hudMic"></div>
+      <div class="bars" id="hudBars"></div>
+      <div id="hudTxt">Listening…</div>
+    </div>
+  </div>
+
+  <!-- S4 Polish -->
+  <div id="s4" class="layer">
+    <div style="position:absolute; left:0; right:0; top:90px; text-align:center">
+      <div class="eyebrow" id="s4eb">Polished mode</div>
+      <div class="h1" id="s4h">Talk like a human. <span class="grad">Type like an editor.</span></div>
+    </div>
+    <div class="card said" id="saidCard" style="left:140px; top:340px; width:760px; height:470px;">
+      <div class="lbl" style="color:#8A94A6">🎙 What you said</div>
+      <div class="txt" id="saidTxt"></div>
+    </div>
+    <div class="arrow" id="polArrow" style="left:915px; top:530px;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </div>
+    <div class="card typed" id="typedCard" style="left:1020px; top:340px; width:760px; height:470px;">
+      <div class="lbl" style="color:var(--blue)">⌨ What gets typed</div>
+      <div class="txt" id="typedTxt"></div>
+    </div>
+    <div class="chips" style="top:880px">
+      <div class="chip" id="c1">Removes <b>um</b>, <b>uh</b> &amp; stutters</div>
+      <div class="chip" id="c2">Fixes <b>caps</b> &amp; <b>apostrophes</b></div>
+      <div class="chip" id="c3">Follows <b>“new line”</b>, <b>“bullet point”</b>, <b>“scratch that”</b></div>
+    </div>
+    <div style="position:absolute; left:0; right:0; top:975px; text-align:center; font-size:24px; color:#8A94A6; font-weight:600; opacity:0" id="s4fine">Runs on your Mac in under a millisecond. No AI model, no server.</div>
+  </div>
+
+  <!-- S5 Chat -->
+  <div id="s5" class="layer">
+    <div style="position:absolute; left:120px; top:250px; width:620px">
+      <div class="eyebrow">Chat-aware</div>
+      <div class="h1" style="font-size:70px">Say “new line.”<br><span class="grad">Not “send.”</span></div>
+      <div class="sub">In Slack, Teams, Discord, WhatsApp and Telegram, MacVoice adds a line break instead of firing off your half-written message.</div>
+    </div>
+    <div class="window chat" id="chatWin" style="left:820px; top:150px; width:1000px; height:780px;">
+      <div class="titlebar"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div><div class="t"># launch</div></div>
+      <div class="side"><div style="font-weight:700;color:#1D1D1F;margin-bottom:12px">Acme</div><div># general</div><div class="on"># launch</div><div># design</div><div># random</div></div>
+      <div style="position:absolute; left:280px; right:30px; top:90px;" id="chatList">
+        <div class="msg"><div class="av" style="background:#E8590C">P</div><div><div class="nm">Priya<span>9:38</span></div><div class="tx">Where are we on the release? 👀</div></div></div>
+        <div class="msg" id="sentMsg" style="opacity:0"><div class="av" style="background:#0A84FF">A</div><div><div class="nm">You<span>9:41</span></div><div class="tx" id="sentTx"></div></div></div>
+      </div>
+      <div class="composer" id="composer"></div>
+    </div>
+    <div class="toast" id="chatToast" style="left:1060px; top:560px;"></div>
+  </div>
+
+  <!-- S6 Clipboard -->
+  <div id="s6" class="layer">
+    <div style="position:absolute; left:0; right:0; top:110px; text-align:center">
+      <div class="eyebrow">Real keystrokes</div>
+      <div class="h1">Types like a keyboard. <span class="grad">Not copy-paste.</span></div>
+      <div class="sub">Your clipboard stays exactly the way you left it.</div>
+    </div>
+    <div class="window" style="left:160px; top:430px; width:960px; height:300px;" id="kbWin">
+      <div class="titlebar"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div><div class="t">Notes</div></div>
+      <div class="body" id="kbBody" style="font-size:34px"></div>
+    </div>
+    <div class="kbrow" id="kbrow" style="left:160px; top:780px;"></div>
+    <div class="clip" id="clipCard" style="left:1200px; top:430px; width:560px;">
+      <div style="font-size:22px; font-weight:700; letter-spacing:1.5px; color:#8A94A6; text-transform:uppercase">📋 Your clipboard</div>
+      <div class="mono" style="margin-top:22px; font-size:26px; color:#E6EBF3; padding:20px 22px; background:rgba(0,0,0,.25); border-radius:14px">github.com/acme/app/pull/482</div>
+      <div id="clipOk" style="margin-top:26px; display:flex; align-items:center; gap:14px; font-size:28px; font-weight:700; color:var(--green); opacity:0">
+        <svg width="36" height="36" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#30D158"/><path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Untouched
+      </div>
+    </div>
+  </div>
+
+  <!-- S7 Specs -->
+  <div id="s7" class="layer">
+    <div style="position:absolute; left:0; right:0; top:120px; text-align:center">
+      <div class="eyebrow">Built natively in Swift</div>
+      <div class="h1">Tiny. Fast. <span class="grad">Private.</span></div>
+    </div>
+    <div class="grid">
+      <div class="tile"><div class="big" id="n1">&lt;1 MB</div><div class="cap">Total download. No Electron, no Python.</div></div>
+      <div class="tile"><div class="big" id="n2">~60 MB</div><div class="cap">Memory while running.</div></div>
+      <div class="tile"><div class="big">On-device</div><div class="cap">Speech recognition. Your audio never leaves your Mac.</div></div>
+      <div class="tile"><div class="big">Live</div><div class="cap">Words stream to your cursor while you speak.</div></div>
+      <div class="tile"><div class="big">&lt;1 ms</div><div class="cap">Text polishing in pure Swift.</div></div>
+      <div class="tile"><div class="big">Zero</div><div class="cap">Accounts, subscriptions or telemetry.</div></div>
+    </div>
+  </div>
+
+  <!-- S8 CTA -->
+  <div id="s8" class="layer center">
+    <svg id="ctaIcon" viewBox="0 0 1024 1024"></svg>
+    <div style="font-size:110px; font-weight:700; letter-spacing:-3.5px; margin-top:36px" id="ctaWord">MacVoice</div>
+    <div style="font-size:44px; font-weight:500; color:#C9D4E5; margin-top:8px" id="ctaTag">Your voice, straight to the cursor.</div>
+    <div class="price" id="ctaPrice">$9 once <span style="opacity:.6">·</span> No subscription</div>
+    <div class="url" id="ctaUrl">macvoice.akshatt.in</div>
+    <div class="fine" id="ctaFine">For Apple Silicon Macs · macOS 26 or later</div>
+  </div>
+
+  <div id="fade"></div>
+</div>
+
+<script>
+const ICON = `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0A84FF"/><stop offset="1" stop-color="#0071E3"/></linearGradient></defs>
+<rect width="1024" height="1024" rx="230" fill="url(#g)"/>
+<rect x="12" y="12" width="1000" height="1000" rx="222" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="12"/>
+<rect x="382" y="190" width="260" height="440" rx="130" fill="#fff"/>
+<path d="M260 480v45c0 139.18 112.82 252 252 252s252-112.82 252-252v-45" fill="none" stroke="#fff" stroke-width="64" stroke-linecap="round"/>
+<path d="M512 777v105M382 882h260" fill="none" stroke="#fff" stroke-width="64" stroke-linecap="round"/>`;
+const MIC = (c, s=22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="${c}" stroke="none"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>`;
+document.getElementById('logoIcon').innerHTML = ICON;
+document.getElementById('ctaIcon').innerHTML = ICON;
+document.getElementById('hudMic').innerHTML = MIC('#fff', 26);
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const clamp = (x, a=0, b=1) => Math.max(a, Math.min(b, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eInOut = x => x < .5 ? 4*x*x*x : 1 - Math.pow(-2*x + 2, 3) / 2;
+const eBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3*Math.pow(x-1,3) + c1*Math.pow(x-1,2); };
+const lerp = (a, b, x) => a + (b - a) * x;
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function rnd(i) { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
+// scene visibility with fade in/out
+function sceneAlpha(t, a, b, fi=.45, fo=.45) { return Math.min(prog(t, a, a+fi), 1 - prog(t, b-fo, b)); }
+function setScene(id, t, a, b, opts={}) {
+  const el = $(id); const al = sceneAlpha(t, a, b, opts.fi ?? .45, opts.fo ?? .45);
+  el.style.opacity = al; el.style.visibility = al > 0.001 ? 'visible' : 'hidden';
+  if (opts.zoom) { const z = 1 + (1 - eOut(prog(t, a, a+.8))) * .04 - prog(t, b-.45, b) * .03; el.style.transform = `scale(${z})`; }
+  return al > 0.001;
+}
+function show(el, a, dy=30) { el = typeof el === 'string' ? $(el) : el; const e = eOut(a); el.style.opacity = a; el.style.transform = `translateY(${(1-e)*dy}px)`; }
+
+// Build a typing schedule: words stream in like live dictation.
+function schedule(text, t0, opts={}) {
+  const per = opts.perChar ?? .02, gap = opts.gap ?? .16, cps = opts.wordChar ?? .022, seed = opts.seed ?? 1;
+  const times = []; const words = []; let t = t0; let i = 0;
+  const tokens = text.match(/\n|[^\s\n]+\s?|\s/g);
+  tokens.forEach((tok, k) => {
+    if (tok === '\n') { t += opts.nlPause ?? .35; times.push(t); words.push({t, nl:true}); t += .2; return; }
+    words.push({t, word: tok});
+    for (let j = 0; j < tok.length; j++) times.push(t + j * per);
+    t += gap + tok.trim().length * cps + rnd(k + seed * 100) * .08;
+  });
+  return { text, times, words, end: t };
+}
+const typedCount = (sch, t) => { let n = 0; while (n < sch.times.length && sch.times[n] <= t) n++; return n; };
+function renderTyped(el, sch, t, cursorOn=true, live=true) {
+  const n = typedCount(sch, t); const s = sch.text.slice(0, n);
+  const lastT = n ? sch.times[n-1] : -9;
+  const blink = (t - lastT) < .5 || Math.floor(t * 2.2) % 2 === 0;
+  el.innerHTML = esc(s).replace(/\n/g, '<br>') + (cursorOn && blink ? '<span class="cursor"></span>' : (cursorOn ? '<span class="cursor" style="opacity:0"></span>' : ''));
+  return n;
+}
+
+// ---------- timeline ----------
+const T = { s1:[0,4.8], s2:[4.8,8.4], s3:[8.4,19.4], s4:[19.4,28.4], s5:[28.4,36.6], s6:[36.6,42.2], s7:[42.2,48.2], s8:[48.2,55] };
+const DURATION = 55;
+
+// S3 mail dictation
+const MAIL = schedule("Hi team, the new build is ready for testing. I fixed the login bug, and onboarding feels much faster now. Let's ship it on Friday!", 11.1, {seed: 3, gap:.115});
+// S4 polish
+const SAID = "um so the the meeting moved to thursday uh dont forget the slides new line thanks everyone";
+const FILLERS = new Set([0, 3, 8]); // um, duplicate "the", uh
+const FIXES = new Set([7, 9]);      // thursday, dont
+const CMDS = new Set([13, 14]);     // new line
+const POL = schedule("So the meeting moved to Thursday. Don't forget the slides.\nThanks everyone.", 23.6, {seed: 7, gap:.11, nlPause:.25});
+// S5 chat
+const CHAT = schedule("Quick update:\n- Login bug is fixed\n- Build is ready for testing\nShipping Friday 🚀", 30.0, {seed: 11, gap:.14, nlPause:.55});
+const SEND_T = 34.9;
+// S6 keyboard
+const KB = schedule("Every word arrives as a real keystroke.", 38.4, {seed: 5, gap:.13});
+const KEYS = ['E','V','R','Y','W','O','D','A','I','S','K','T'];
+
+// Hook words
+function hookHTML(el, words) { el.innerHTML = words.map(w => `<span class="w ${w.c||''}">${w.t}</span>`).join(' '); }
+hookHTML($('hookA'), [{t:'You'},{t:'think'},{t:'faster'},{t:'than'},{t:'you'},{t:'type.'}]);
+hookHTML($('hookB'), [{t:'So'},{t:'why'},{t:'not'},{t:'just'},{t:'<span class="grad">say&nbsp;it?</span>'}]);
+$('hookA').innerHTML = $('hookA').innerHTML.replace('</span> <span class="w ">than', '</span><br><span class="w ">than');
+$('hudBars').innerHTML = Array.from({length: 18}, () => '<i></i>').join('');
+$('kbrow').innerHTML = KEYS.map(k => `<div class="kc">${k}</div>`).join('');
+$('saidTxt').innerHTML = SAID.split(' ').map((w, i) => `<span class="tok" data-i="${i}" style="opacity:0">${w}</span>`).join(' ');
+
+function render(t) {
+  // ambient background drift
+  $('b1').style.transform = `translate(${-450 + Math.sin(t*.25)*120}px, ${-550 + Math.cos(t*.2)*80}px)`;
+  $('b2').style.transform = `translate(${1050 + Math.cos(t*.22)*140}px, ${250 + Math.sin(t*.18)*100}px)`;
+  $('b3').style.transform = `translate(${450 + Math.sin(t*.15)*200}px, ${-350 + Math.cos(t*.27)*120}px)`;
+  $('bg').style.opacity = t < T.s3[0] || t > T.s3[1] ? 1 : 1;
+
+  // ---- S1 Hook
+  if (setScene('s1', t, ...T.s1, {fi:.01})) {
+    const wa = $('hookA').querySelectorAll('.w');
+    wa.forEach((w, i) => { const a = eOut(prog(t, .25 + i*.17, .75 + i*.17)); w.style.opacity = a * (1 - prog(t, 2.3, 2.6)); w.style.transform = `translateY(${(1-a)*40 - prog(t,2.3,2.6)*30}px)`; });
+    const wb = $('hookB').querySelectorAll('.w');
+    wb.forEach((w, i) => { const a = eOut(prog(t, 2.65 + i*.18, 3.15 + i*.18)); w.style.opacity = a; w.style.transform = `translateY(${(1-a)*40}px)`; });
+  }
+  // ---- S2 Logo
+  if (setScene('s2', t, ...T.s2, {fi:.2})) {
+    const a = prog(t, 4.8, 5.6);
+    $('logoIcon').style.transform = `scale(${lerp(.4, 1, eBack(a))}) rotate(${(1-eOut(a))*-12}deg)`;
+    $('logoIcon').style.opacity = clamp(a*2);
+    show('wordmark', prog(t, 5.3, 6.0), 40);
+    $('tagline').querySelectorAll('span').forEach((s, i) => { const b = prog(t, 6.1 + i*.32, 6.55 + i*.32); s.style.opacity = b; s.style.transform = `translateY(${(1-eOut(b))*24}px) scale(${lerp(.9,1,eOut(b))})`; });
+  }
+  // ---- S3 Demo
+  if (setScene('s3', t, ...T.s3, {zoom:true})) {
+    const pressed = t > 10.15 && t < 10.55;
+    const listening = t >= 10.55 && t < 17.7;
+    // steps
+    const stepOn = t < 10.6 ? 0 : t < 11.6 ? 1 : 2;
+    ['st1','st2','st3'].forEach((id, i) => { const el = $(id); const on = stepOn === i || (t > 17.9); const a = prog(t, 8.9 + i*.15, 9.4 + i*.15);
+      el.style.opacity = a * (on ? 1 : .32); el.style.transform = `translateX(${(1-eOut(a))*40}px)`;
+      el.querySelector('.n').style.background = on ? 'var(--blue)' : 'transparent'; el.querySelector('.n').style.borderColor = on ? 'var(--blue)' : 'rgba(255,255,255,.5)'; });
+    // window entrance
+    const wa = eOut(prog(t, 8.4, 9.2));
+    $('mailWin').style.transform = `translateY(${(1-wa)*60}px) scale(${lerp(.96,1,wa)})`; $('mailWin').style.opacity = wa;
+    // keycaps
+    const ka = Math.min(eOut(prog(t, 9.4, 9.8)), 1 - prog(t, 10.6, 10.95));
+    $('keys').style.opacity = ka; $('keys').style.transform = `translateY(${(1-ka)*30}px) scale(${lerp(.9,1,ka)})`;
+    $('keys').querySelectorAll('.key').forEach((k, i) => { const p = t > 10.0 + i*.07 && t < 10.55; k.style.transform = p ? 'translateY(6px)' : 'none'; k.style.boxShadow = p ? '0 2px 0 #B9C0CB, 0 8px 20px rgba(0,0,0,.4)' : ''; k.style.background = p ? 'linear-gradient(#DCEBFF,#C8DDFB)' : ''; });
+    // menubar mic
+    $('mbmic').style.background = listening ? 'var(--blue)' : 'transparent';
+    $('mbmic').innerHTML = MIC(listening ? '#fff' : '#E6EBF3', 20);
+    // HUD
+    const ha = Math.min(eOut(prog(t, 10.55, 10.9)), 1 - prog(t, 18.2, 18.5));
+    $('hud').style.opacity = ha; $('hud').style.transform = `translateY(${(1-ha)*30}px)`;
+    const done = t >= 17.7;
+    $('hudTxt').textContent = done ? 'Done ✓' : 'Listening…';
+    $('hudMic').style.background = done ? 'var(--green)' : 'var(--blue)';
+    $('hudMic').style.boxShadow = done ? 'none' : `0 0 0 ${6 + Math.sin(t*6)*4}px rgba(10,132,255,.3)`;
+    $('hudBars').querySelectorAll('i').forEach((b, i) => {
+      const speaking = typedCount(MAIL, t + .05) < MAIL.times.length && t > 11.0;
+      const amp = done ? .08 : speaking ? (.35 + .65 * Math.abs(Math.sin(t*9 + i*.7) * Math.cos(t*4.3 + i*1.3))) : .12 + .05*Math.sin(t*3+i);
+      b.style.height = `${6 + amp * 38}px`; });
+    renderTyped($('mailBody'), MAIL, t, true);
+  }
+  // ---- S4 Polish
+  if (setScene('s4', t, ...T.s4, {zoom:true})) {
+    show('s4eb', prog(t, 19.5, 20.0)); show('s4h', prog(t, 19.65, 20.25));
+    show('saidCard', prog(t, 20.0, 20.6), 40); show('typedCard', prog(t, 20.2, 20.8), 40);
+    const ar = eBack(prog(t, 22.9, 23.4)); $('polArrow').style.transform = `scale(${ar})`; $('polArrow').style.opacity = clamp(ar);
+    const toks = $('saidTxt').querySelectorAll('.tok');
+    toks.forEach((s, i) => {
+      s.style.opacity = prog(t, 20.6 + i*.11, 20.8 + i*.11);
+      const m = prog(t, 22.2, 22.6);
+      if (FILLERS.has(i)) { s.style.background = `rgba(255,69,58,${.22*m})`; s.style.color = m > .5 ? '#FF8A80' : ''; s.style.textDecoration = m > .5 ? 'line-through' : 'none'; s.style.textDecorationColor = '#FF453A'; }
+      if (FIXES.has(i)) { s.style.background = `rgba(255,214,10,${.2*m})`; s.style.color = m > .5 ? '#FFE27A' : ''; }
+      if (CMDS.has(i)) { s.style.background = `rgba(100,210,255,${.22*m})`; s.style.color = m > .5 ? '#9BE3FF' : ''; }
+    });
+    renderTyped($('typedTxt'), POL, t, t > 23.4);
+    ['c1','c2','c3'].forEach((id, i) => show(id, prog(t, 25.9 + i*.2, 26.3 + i*.2), 20));
+    show('s4fine', prog(t, 26.6, 27.0), 12);
+  }
+  // ---- S5 Chat
+  if (setScene('s5', t, ...T.s5, {zoom:true})) {
+    const wa = eOut(prog(t, 28.6, 29.3)); $('chatWin').style.transform = `translateX(${(1-wa)*80}px)`; $('chatWin').style.opacity = wa;
+    const sent = t >= SEND_T;
+    if (!sent) renderTyped($('composer'), CHAT, t, t > 29.6); else $('composer').innerHTML = '<span style="color:#A0A6B4">Message #launch</span>';
+    $('composer').style.borderColor = sent ? '#D5D9E2' : '#0A84FF';
+    const sa = eOut(prog(t, SEND_T, SEND_T + .35));
+    $('sentMsg').style.opacity = sa; $('sentMsg').style.transform = `translateY(${(1-sa)*30}px)`;
+    $('sentTx').innerHTML = esc(CHAT.text).replace(/\n/g,'<br>');
+    // toast: show near each newline command
+    const nls = CHAT.words.filter(w => w.nl);
+    let tt = null; nls.forEach(w => { if (t >= w.t - .25 && t < w.t + .7) tt = w; });
+    if (t >= SEND_T - .55 && t < SEND_T + .9) tt = {send: true, t: SEND_T - .55};
+    const toast = $('chatToast');
+    if (tt) {
+      const a = Math.min(eOut(prog(t, tt.t - .25, tt.t - .05)), 1);
+      toast.style.opacity = a; toast.style.transform = `translateY(${(1-a)*16}px)`;
+      toast.innerHTML = tt.send ? `<span style="color:var(--green)">✓</span> You decide when to send <span class="kbd">Return</span>`
+                                : `${MIC('#64D2FF', 28)} “new line” <span style="color:#8A94A6">→</span> <span class="kbd">⇧ Return</span>`;
+    } else toast.style.opacity = 0;
+    const compH = $('composer').getBoundingClientRect().height;
+  }
+  // ---- S6 Clipboard
+  if (setScene('s6', t, ...T.s6, {zoom:true})) {
+    show('kbWin', prog(t, 36.8, 37.4), 40); show('clipCard', prog(t, 37.0, 37.6), 40); show('kbrow', prog(t, 37.2, 37.8), 30);
+    const n = renderTyped($('kbBody'), KB, t, true);
+    const ch = (KB.text[n-1] || '').toUpperCase(); const lastT = n ? KB.times[n-1] : -9;
+    $('kbrow').querySelectorAll('.kc').forEach((k, i) => { const on = KEYS[i] === ch && t - lastT < .12;
+      k.style.background = on ? 'var(--blue)' : ''; k.style.color = on ? '#fff' : ''; k.style.transform = on ? 'translateY(4px)' : 'none'; });
+    const ok = eBack(prog(t, KB.end + .1, KB.end + .5)); $('clipOk').style.opacity = clamp(ok); $('clipOk').style.transform = `scale(${lerp(.7,1,ok)})`;
+  }
+  // ---- S7 Specs
+  if (setScene('s7', t, ...T.s7, {zoom:true})) {
+    $('s7').querySelectorAll('.tile').forEach((el, i) => { const a = prog(t, 42.7 + i*.18, 43.2 + i*.18); el.style.opacity = a; el.style.transform = `translateY(${(1-eOut(a))*40}px) scale(${lerp(.95,1,eOut(a))})`; });
+    const c = eOut(prog(t, 42.9, 44.2)); $('n2').textContent = `~${Math.round(lerp(0, 60, c))} MB`;
+  }
+  // ---- S8 CTA
+  if (setScene('s8', t, T.s8[0], T.s8[1] + 1, {fi:.5})) {
+    const a = prog(t, 48.3, 49.0); $('ctaIcon').style.transform = `scale(${lerp(.5,1,eBack(a))})`; $('ctaIcon').style.opacity = clamp(a*2);
+    show('ctaWord', prog(t, 48.7, 49.3), 30); show('ctaTag', prog(t, 49.0, 49.6), 24);
+    show('ctaPrice', prog(t, 49.6, 50.2), 24); show('ctaUrl', prog(t, 50.0, 50.6), 20); show('ctaFine', prog(t, 50.3, 50.9), 16);
+  }
+  $('fade').style.opacity = prog(t, 54.2, 55);
+}
+
+// Sound-effect cue list, derived from the same timeline.
+function cues() {
+  const ev = [];
+  ev.push({t: 4.55, k: 'whoosh'}, {t: 5.0, k: 'chime'});
+  ev.push({t: 10.0, k: 'thock'}, {t: 10.55, k: 'blip'}, {t: 17.7, k: 'done'});
+  MAIL.words.forEach(w => ev.push({t: w.t, k: 'tick'}));
+  [8.3, 19.3, 28.3, 36.5, 42.1, 48.1].forEach(x => ev.push({t: x, k: 'swoosh'}));
+  ev.push({t: 22.2, k: 'blip'});
+  POL.words.forEach(w => ev.push({t: w.t, k: 'tick'}));
+  CHAT.words.forEach(w => ev.push({t: w.t, k: w.nl ? 'thock' : 'tick'}));
+  ev.push({t: SEND_T, k: 'pop'});
+  KB.times.forEach(x => ev.push({t: x, k: 'key'}));
+  ev.push({t: KB.end + .1, k: 'done'});
+  [42.7,42.88,43.06,43.24,43.42,43.6].forEach(x => ev.push({t: x, k: 'tick'}));
+  ev.push({t: 48.3, k: 'chime'});
+  return ev;
+}
+window.render = render; window.DURATION = DURATION; window.cues = cues;
+// Preview mode: play in real time when opened directly in a browser.
+if (!location.search.includes('capture')) { const t0 = performance.now(); (function loop(){ render(((performance.now()-t0)/1000) % DURATION); requestAnimationFrame(loop); })(); }
+else render(0);
+</script>
+</body>
+</html>
